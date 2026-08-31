@@ -37,14 +37,17 @@ export default function NexoraNavbar() {
   const [hoveredHref, setHoveredHref] =
     useState<string | null>(null);
 
-  const activeHref =
-    navigation.find(
-      (item) =>
-        pathname === item.href ||
-        pathname.startsWith(
-          `${item.href}/`
-        )
-    )?.href ?? null;
+  const isResourceRoute = pathname.startsWith("/resources");
+
+  const activeHref = isResourceRoute
+    ? "/explore"
+    : navigation.find(
+        (item) =>
+          pathname === item.href ||
+          pathname.startsWith(
+            `${item.href}/`
+          )
+      )?.href ?? null;
 
   const indicatorHref =
     hoveredHref ?? activeHref;

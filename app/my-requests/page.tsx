@@ -97,7 +97,7 @@ export default async function MyRequestsPage() {
         ====================================== */}
 
         <p className="mt-8 text-sm font-medium text-emerald-300">
-          NEXORA REQUESTS
+          ARVENA REQUESTS
         </p>
 
         <h1 className="mt-3 text-4xl font-semibold tracking-tight">

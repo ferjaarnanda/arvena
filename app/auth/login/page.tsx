@@ -42,7 +42,7 @@ export default function LoginPage() {
         </h1>
 
         <p className="mt-2 text-sm text-white/40">
-          Sign in to your NEXORA ecosystem.
+          Sign in to your ARVENA ecosystem.
         </p>
 
         <form

@@ -830,7 +830,7 @@ export default function NewRequestPage() {
 
         <div className="mt-8">
           <p className="text-xs font-medium uppercase tracking-[0.2em] text-emerald-300/80">
-            NEXORA RESOURCE REQUEST
+            ARVENA RESOURCE REQUEST
           </p>
 
           <h1 className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">

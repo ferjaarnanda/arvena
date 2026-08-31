@@ -570,10 +570,10 @@ function scoreResource(
 }
 
 /* =========================================================
-   SEARCH NEXORA RESOURCES
+   SEARCH ARVENA RESOURCES
 ========================================================= */
 
-async function searchNexoraResources(
+async function searchArvenaResources(
   userText: string
 ): Promise<ResourceRow[]> {
   const supabase =
@@ -607,7 +607,7 @@ async function searchNexoraResources(
 
   if (error) {
     console.error(
-      "NEXORA RESOURCE SEARCH ERROR:",
+      "ARVENA RESOURCE SEARCH ERROR:",
       error
     );
 
@@ -881,7 +881,7 @@ export async function POST(
       )
     ) {
       matchedResources =
-        await searchNexoraResources(
+        await searchArvenaResources(
           userText
         );
     }

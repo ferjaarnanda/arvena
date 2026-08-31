@@ -374,7 +374,7 @@ export default async function AIPage() {
     intelligenceMessages.push(
       `${getCategoryLabel(
         dominantCategory.category
-      )} merupakan kategori resource dengan volume tersedia terbesar di NEXORA saat ini.`
+      )} merupakan kategori resource dengan volume tersedia terbesar di ARVENA saat ini.`
     );
   }
 
@@ -421,7 +421,7 @@ export default async function AIPage() {
     intelligenceMessages.length === 0
   ) {
     intelligenceMessages.push(
-      "Belum cukup data untuk menghasilkan insight lingkungan yang kuat. Tambahkan resource dan aktivitas pertukaran untuk membangun intelligence NEXORA."
+      "Belum cukup data untuk menghasilkan insight lingkungan yang kuat. Tambahkan resource dan aktivitas pertukaran untuk membangun intelligence ARVENA."
     );
   }
 
@@ -461,7 +461,7 @@ export default async function AIPage() {
 
         <div className="mt-8">
           <p className="text-sm font-medium tracking-[0.18em] text-emerald-300">
-            NEXORA INTELLIGENCE
+            ARVENA INTELLIGENCE
           </p>
 
           <h1 className="mt-3 text-4xl font-semibold tracking-tight">
@@ -469,7 +469,7 @@ export default async function AIPage() {
           </h1>
 
           <p className="mt-3 max-w-3xl leading-7 text-white/40">
-            NEXORA membaca aktivitas resource
+            ARVENA membaca aktivitas resource
             dan pertukaran material untuk
             membantu memahami kondisi
             circular economy di dalam ekosistem
@@ -489,7 +489,7 @@ export default async function AIPage() {
             </p>
 
             <p className="mt-2 text-sm leading-6 text-white/40">
-              NEXORA tetap menampilkan data
+              ARVENA tetap menampilkan data
               yang berhasil diambil.
               Periksa error Supabase di
               terminal jika ada data yang
@@ -511,7 +511,7 @@ export default async function AIPage() {
 
               <p className="mt-1 text-xs text-white/30">
                 Ringkasan data yang sedang
-                dianalisis NEXORA.
+                dianalisis ARVENA.
               </p>
             </div>
           </div>
@@ -616,7 +616,7 @@ export default async function AIPage() {
               <div className="flex-1">
 
                 <p className="text-xs font-medium uppercase tracking-[0.18em] text-emerald-300">
-                  NEXORA Intelligence
+                  ARVENA Intelligence
                 </p>
 
                 <h2 className="mt-2 text-2xl font-semibold">
@@ -627,7 +627,7 @@ export default async function AIPage() {
                   Insight berikut dibuat dari
                   aktivitas resource dan
                   pertukaran yang tersimpan
-                  di NEXORA.
+                  di ARVENA.
                 </p>
 
                 <div className="mt-6 space-y-3">
@@ -947,7 +947,7 @@ export default async function AIPage() {
                 <p className="mt-2 max-w-2xl text-sm leading-6 text-white/40">
                   Data impact yang nantinya
                   akan menjadi salah satu sumber
-                  utama untuk AI NEXORA.
+                  utama untuk AI ARVENA.
                 </p>
               </div>
 

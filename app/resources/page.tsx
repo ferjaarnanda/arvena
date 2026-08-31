@@ -82,7 +82,7 @@ export default function ResourcesPage() {
         <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
           <div>
             <p className="text-sm font-medium text-emerald-300">
-              NEXORA RESOURCE HUB
+              ARVENA RESOURCE HUB
             </p>
 
             <h1 className="mt-3 text-4xl font-semibold tracking-tight md:text-5xl">
@@ -90,7 +90,7 @@ export default function ResourcesPage() {
             </h1>
 
             <p className="mt-3 max-w-2xl text-white/50">
-              Temukan resource yang tersedia di ekosistem NEXORA
+              Temukan resource yang tersedia di ekosistem ARVENA
               dan gunakan kembali untuk menciptakan dampak yang lebih besar.
             </p>
           </div>

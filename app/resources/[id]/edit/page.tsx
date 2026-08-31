@@ -679,7 +679,7 @@ export default function EditResourcePage() {
         {/* HEADER */}
 
         <p className="mt-8 text-sm text-emerald-300">
-          NEXORA RESOURCE
+          ARVENA RESOURCE
         </p>
 
         <h1 className="mt-3 text-4xl font-semibold">

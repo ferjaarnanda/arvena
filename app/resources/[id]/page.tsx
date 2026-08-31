@@ -159,7 +159,7 @@ export default function ResourceDetailPage() {
 
   async function handleDeleteResource() {
     const confirmed = window.confirm(
-      "Yakin ingin menghapus resource ini?\n\nResource akan dihapus dari NEXORA dan tidak dapat dikembalikan."
+      "Yakin ingin menghapus resource ini?\n\nResource akan dihapus dari ARVENA dan tidak dapat dikembalikan."
     );
 
     if (!confirmed) {
@@ -226,7 +226,7 @@ export default function ResourceDetailPage() {
       <main className="flex min-h-screen items-center justify-center bg-[#07130f] px-6 text-white">
         <div className="w-full max-w-lg rounded-3xl border border-red-400/20 bg-red-400/10 p-8">
           <p className="text-sm font-medium text-red-300">
-            NEXORA RESOURCE
+            ARVENA RESOURCE
           </p>
 
           <h1 className="mt-3 text-2xl font-semibold">
@@ -297,7 +297,7 @@ export default function ResourceDetailPage() {
   const ownerName =
     resource.profiles?.full_name ||
     resource.profiles?.username ||
-    "NEXORA User";
+    "ARVENA User";
 
   // ==========================================
   // UI
@@ -855,7 +855,7 @@ export default function ResourceDetailPage() {
 
                     <p className="mt-1 text-xs text-white/25">
                       Ajukan permintaan kepada pemilik
-                      resource melalui NEXORA.
+                      resource melalui ARVENA.
                     </p>
 
                   </div>
