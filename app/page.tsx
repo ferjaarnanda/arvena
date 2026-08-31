@@ -1,308 +1,453 @@
-import {
-  ArrowRight,
-  BrainCircuit,
-  Building2,
-  Leaf,
-  MapPinned,
-  Recycle,
-  ShieldCheck,
-  Sparkles,
-  Users,
-  Zap,
-} from "lucide-react";
+"use client";
 
-const features = [
+import Image from "next/image";
+import Link from "next/link";
+
+const platformCards = [
   {
-    icon: Recycle,
-    title: "Circular Exchange",
+    number: "01",
+    eyebrow: "Discover",
+    title:
+      "Find the resources your city can reuse.",
     description:
-      "Temukan, tawarkan, dan manfaatkan kembali sumber daya yang masih bernilai.",
+      "Explore materials, surplus resources, and circular opportunities available around your city.",
+    href: "/explore",
   },
   {
-    icon: BrainCircuit,
-    title: "AI Intelligence",
+    number: "02",
+    eyebrow: "Exchange",
+    title:
+      "Turn unused resources into new value.",
     description:
-      "Dapatkan rekomendasi cerdas berdasarkan kebutuhan, lokasi, dan potensi dampak.",
+      "Connect people who have resources with people who need them through a smarter exchange flow.",
+    href: "/exchange",
   },
   {
-    icon: MapPinned,
-    title: "Smart City Map",
+    number: "03",
+    eyebrow: "Impact",
+    title:
+      "See the environmental value behind every action.",
     description:
-      "Jelajahi resource, komunitas, UMKM, dan fasilitas berkelanjutan dalam satu peta.",
+      "Understand material recovery, transport emissions, and environmental impact through connected data.",
+    href: "/impact",
   },
   {
-    icon: Leaf,
-    title: "Impact Tracking",
+    number: "04",
+    eyebrow: "City",
+    title:
+      "Understand your city through circular intelligence.",
     description:
-      "Ukur kontribusi nyata terhadap lingkungan dan ekonomi secara transparan.",
+      "Combine resource activity, location intelligence, community data, and future GIS capabilities in one ecosystem.",
+    href: "/community",
   },
 ];
 
-const stats = [
-  ["12.8K", "kg resource recovered"],
-  ["3.7K", "kg CO₂e estimated avoided"],
-  ["1.2K+", "community actions"],
-  ["94%", "average smart match"],
-];
-
-export default function Home() {
+export default function HomePage() {
   return (
-    <main className="min-h-screen bg-[#07130f] text-white">
-      {/* NAVBAR */}
-      <nav className="mx-auto flex max-w-7xl items-center justify-between px-6 py-6 lg:px-8">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-400 text-[#07130f]">
-            <Leaf size={22} strokeWidth={2.5} />
-          </div>
+    <main className="min-h-screen overflow-hidden bg-[#020705] text-white">
 
-          <div>
-            <div className="text-lg font-bold tracking-tight">NEXORA</div>
-            <div className="text-[10px] uppercase tracking-[0.25em] text-emerald-300/60">
-              Smart Urban Intelligence
-            </div>
-          </div>
-        </div>
+      {/* =====================================================
+          HERO
+      ===================================================== */}
 
-        <div className="hidden items-center gap-8 text-sm text-white/60 md:flex">
-          <a href="#ecosystem" className="transition hover:text-white">
-            Ecosystem
-          </a>
-          <a href="#features" className="transition hover:text-white">
-            Features
-          </a>
-          <a href="#impact" className="transition hover:text-white">
-            Impact
-          </a>
-        </div>
+      <section className="relative isolate min-h-[760px] overflow-hidden">
 
-        <button className="rounded-full border border-white/10 bg-white/5 px-5 py-2.5 text-sm font-medium transition hover:bg-white/10">
-          Explore NEXORA
-        </button>
-      </nav>
+        {/* ===================================================
+            BASE
+        =================================================== */}
 
-      {/* HERO */}
-      <section className="relative overflow-hidden">
-        <div className="absolute left-1/2 top-10 h-[500px] w-[700px] -translate-x-1/2 rounded-full bg-emerald-500/10 blur-[120px]" />
+        <div className="absolute inset-0 bg-[#020705]" />
 
-        <div className="relative mx-auto grid max-w-7xl gap-16 px-6 pb-24 pt-20 lg:grid-cols-2 lg:items-center lg:px-8 lg:pb-32">
-          <div>
-            <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-emerald-400/20 bg-emerald-400/5 px-4 py-2 text-xs font-medium text-emerald-300">
-              <Sparkles size={14} />
-              Adaptive innovation for future-ready cities
-            </div>
+        {/* ===================================================
+            SOFT DIAGONAL GREEN LIGHT
 
-            <h1 className="max-w-3xl text-5xl font-semibold leading-[1.05] tracking-[-0.04em] sm:text-6xl lg:text-7xl">
-              Turning urban
-              <span className="block text-emerald-300">
-                resources into impact.
-              </span>
-            </h1>
-
-            <p className="mt-7 max-w-xl text-lg leading-8 text-white/55">
-              NEXORA connects people, communities, and businesses through
-              intelligent resource exchange, spatial intelligence, and
-              measurable sustainability impact.
-            </p>
-
-            <div className="mt-9 flex flex-wrap gap-4">
-              <button className="group flex items-center gap-2 rounded-full bg-emerald-300 px-6 py-3.5 font-semibold text-[#07130f] transition hover:bg-emerald-200">
-                Explore ecosystem
-                <ArrowRight
-                  size={18}
-                  className="transition group-hover:translate-x-1"
-                />
-              </button>
-
-              <button className="rounded-full border border-white/10 bg-white/5 px-6 py-3.5 font-medium text-white transition hover:bg-white/10">
-                See how it works
-              </button>
-            </div>
-
-            <div className="mt-10 flex flex-wrap gap-6 text-xs text-white/40">
-              <div className="flex items-center gap-2">
-                <ShieldCheck size={15} className="text-emerald-300" />
-                Privacy-aware
-              </div>
-
-              <div className="flex items-center gap-2">
-                <Zap size={15} className="text-emerald-300" />
-                AI-powered
-              </div>
-
-              <div className="flex items-center gap-2">
-                <Users size={15} className="text-emerald-300" />
-                Community-driven
-              </div>
-            </div>
-          </div>
-
-          {/* HERO VISUAL */}
-          <div className="relative mx-auto w-full max-w-xl">
-            <div className="relative aspect-square overflow-hidden rounded-[2rem] border border-white/10 bg-white/[0.03] p-5 shadow-2xl">
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(52,211,153,0.12),transparent_55%)]" />
-
-              <div className="relative h-full overflow-hidden rounded-[1.5rem] border border-white/10 bg-[#0b1b15]">
-                {/* simulated map */}
-                <div className="absolute inset-0 opacity-30">
-                  <div className="absolute left-[15%] top-[20%] h-px w-[70%] rotate-12 bg-emerald-300/30" />
-                  <div className="absolute left-[10%] top-[45%] h-px w-[80%] -rotate-6 bg-emerald-300/20" />
-                  <div className="absolute left-[20%] top-[70%] h-px w-[65%] rotate-3 bg-emerald-300/20" />
-                  <div className="absolute left-[35%] top-[5%] h-[90%] w-px rotate-[20deg] bg-emerald-300/20" />
-                  <div className="absolute left-[60%] top-[0%] h-[100%] w-px rotate-[70deg] bg-emerald-300/20" />
-                </div>
-
-                {/* map nodes */}
-                <div className="absolute left-[25%] top-[30%]">
-                  <div className="h-4 w-4 rounded-full bg-emerald-300 shadow-[0_0_25px_rgba(110,231,183,0.8)]" />
-                </div>
-
-                <div className="absolute left-[65%] top-[25%]">
-                  <div className="h-4 w-4 rounded-full bg-blue-300 shadow-[0_0_25px_rgba(147,197,253,0.8)]" />
-                </div>
-
-                <div className="absolute left-[55%] top-[65%]">
-                  <div className="h-4 w-4 rounded-full bg-amber-300 shadow-[0_0_25px_rgba(252,211,77,0.8)]" />
-                </div>
-
-                <div className="absolute left-[20%] top-[70%]">
-                  <div className="h-4 w-4 rounded-full bg-purple-300 shadow-[0_0_25px_rgba(216,180,254,0.8)]" />
-                </div>
-
-                {/* floating card */}
-                <div className="absolute bottom-5 left-5 right-5 rounded-2xl border border-white/10 bg-[#10251d]/90 p-5 backdrop-blur-xl">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <div className="text-xs text-white/40">
-                        Smart recommendation
-                      </div>
-                      <div className="mt-1 font-semibold">
-                        Cardboard → Local Packaging
-                      </div>
-                    </div>
-
-                    <div className="text-right">
-                      <div className="text-2xl font-bold text-emerald-300">
-                        94%
-                      </div>
-                      <div className="text-[10px] uppercase tracking-wider text-white/30">
-                        Match
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-white/10">
-                    <div className="h-full w-[94%] rounded-full bg-emerald-300" />
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* STATS */}
-      <section id="impact" className="border-y border-white/10 bg-white/[0.02]">
-        <div className="mx-auto grid max-w-7xl grid-cols-2 px-6 py-10 lg:grid-cols-4 lg:px-8">
-          {stats.map(([value, label]) => (
-            <div
-              key={label}
-              className="border-white/10 px-5 py-5 first:border-l-0 lg:border-l"
-            >
-              <div className="text-3xl font-semibold tracking-tight">
-                {value}
-              </div>
-              <div className="mt-1 text-xs text-white/40">{label}</div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* FEATURES */}
-      <section id="features" className="mx-auto max-w-7xl px-6 py-28 lg:px-8">
-        <div className="max-w-2xl">
-          <div className="text-sm font-medium text-emerald-300">
-            ONE CONNECTED ECOSYSTEM
-          </div>
-
-          <h2 className="mt-4 text-4xl font-semibold tracking-tight sm:text-5xl">
-            Intelligence that connects the city.
-          </h2>
-
-          <p className="mt-5 text-white/50">
-            Bukan sekadar dashboard. NEXORA menghubungkan resource,
-            masyarakat, UMKM, lokasi, dan impact dalam satu ecosystem.
-          </p>
-        </div>
+            Bukan full-page glow.
+            Cahaya padat mulai dari kiri atas,
+            bergerak diagonal ke tengah,
+            kemudian melebar dan melemah.
+        =================================================== */}
 
         <div
-          id="ecosystem"
-          className="mt-14 grid gap-4 sm:grid-cols-2 lg:grid-cols-4"
-        >
-          {features.map((feature) => {
-            const Icon = feature.icon;
+          className="pointer-events-none absolute -left-[260px] -top-[220px] h-[900px] w-[1250px] rotate-[23deg]"
+          style={{
+            background:
+              "linear-gradient(90deg, transparent 0%, rgba(72,220,145,0.025) 10%, rgba(65,215,140,0.07) 24%, rgba(62,210,136,0.12) 39%, rgba(58,200,130,0.08) 55%, rgba(42,170,108,0.045) 72%, transparent 100%)",
+            filter: "blur(48px)",
+          }}
+        />
 
-            return (
-              <div
-                key={feature.title}
-                className="group rounded-3xl border border-white/10 bg-white/[0.03] p-7 transition duration-300 hover:-translate-y-1 hover:border-emerald-300/20 hover:bg-white/[0.05]"
+        {/* ===================================================
+            SOFT CORE
+        =================================================== */}
+
+        <div
+          className="pointer-events-none absolute -left-[170px] -top-[150px] h-[650px] w-[850px] rotate-[23deg]"
+          style={{
+            background:
+              "linear-gradient(90deg, transparent 0%, rgba(110,245,174,0.035) 12%, rgba(91,238,165,0.085) 28%, rgba(78,225,150,0.13) 43%, rgba(62,205,132,0.09) 58%, rgba(48,180,114,0.045) 75%, transparent 100%)",
+            filter: "blur(34px)",
+          }}
+        />
+
+        {/* ===================================================
+            AMBIENT LIGHT AROUND CENTER
+        =================================================== */}
+
+        <div
+          className="pointer-events-none absolute left-[28%] top-[18%] h-[500px] w-[700px]"
+          style={{
+            background:
+              "radial-gradient(ellipse, rgba(28,150,92,0.055) 0%, rgba(22,125,77,0.035) 36%, rgba(13,95,59,0.02) 58%, transparent 78%)",
+            filter: "blur(65px)",
+          }}
+        />
+
+        {/* ===================================================
+            VERY SUBTLE GREEN ON RIGHT
+            Hanya supaya page tidak mati total.
+        =================================================== */}
+
+        <div
+          className="pointer-events-none absolute right-[-300px] top-[180px] h-[500px] w-[650px]"
+          style={{
+            background:
+              "radial-gradient(ellipse, rgba(20,110,70,0.025) 0%, transparent 72%)",
+            filter: "blur(75px)",
+          }}
+        />
+
+        {/* ===================================================
+            GRID
+        =================================================== */}
+
+        <div
+          className="pointer-events-none absolute inset-0 opacity-[0.035]"
+          style={{
+            backgroundImage:
+              "linear-gradient(rgba(255,255,255,0.14) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.14) 1px, transparent 1px)",
+            backgroundSize: "72px 72px",
+            maskImage:
+              "linear-gradient(to bottom, black 0%, black 55%, transparent 88%)",
+          }}
+        />
+
+        {/* ===================================================
+            CONTENT
+        =================================================== */}
+
+        <div className="relative mx-auto max-w-[1280px] px-5 pb-28 pt-24 sm:px-8 sm:pt-28 lg:px-10">
+
+          <div className="mx-auto max-w-5xl text-center">
+
+            {/* =================================================
+                ARVENA LOCKUP
+                SEKARANG PAKAI ASSET LANGSUNG
+            ================================================= */}
+
+            <div className="mx-auto flex justify-center">
+              <Image
+                src="/arvena-lockup.png"
+                alt="ARVENA Connected City Ecosystem"
+                width={900}
+                height={320}
+                priority
+                className="h-auto w-[250px] object-contain sm:w-[310px] lg:w-[390px]"
+              />
+            </div>
+
+            {/* =================================================
+                BADGE
+            ================================================= */}
+
+            <div className="mt-8 inline-flex items-center gap-2 rounded-full border border-emerald-300/[0.09] bg-emerald-300/[0.025] px-3.5 py-1.5 text-[9px] font-medium uppercase tracking-[0.24em] text-emerald-200/55 backdrop-blur-sm">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-300/75 shadow-[0_0_10px_rgba(110,231,183,0.6)]" />
+
+              Connected City Ecosystem
+            </div>
+
+            {/* =================================================
+                HEADLINE
+            ================================================= */}
+
+            <h1 className="mx-auto mt-7 max-w-4xl text-4xl font-medium leading-[1.04] tracking-[-0.04em] text-white sm:text-5xl lg:text-7xl">
+              A smarter city begins
+              with the resources
+              already around us.
+            </h1>
+
+            {/* =================================================
+                DESCRIPTION
+            ================================================= */}
+
+            <p className="mx-auto mt-6 max-w-2xl text-sm leading-7 text-white/35 sm:text-base">
+              ARVENA connects circular resources,
+              communities, environmental intelligence,
+              and city data into one connected ecosystem.
+            </p>
+
+            {/* =================================================
+                CTA
+            ================================================= */}
+
+            <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
+
+              <Link
+                href="/explore"
+                className="inline-flex h-12 items-center justify-center rounded-full bg-emerald-300 px-7 text-sm font-semibold text-[#06120e] transition hover:-translate-y-0.5 hover:bg-emerald-200"
               >
-                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-300/10 text-emerald-300">
-                  <Icon size={22} />
+                Explore ARVENA
+              </Link>
+
+              <Link
+                href="/resources/new"
+                className="inline-flex h-12 items-center justify-center rounded-full border border-white/[0.09] bg-white/[0.015] px-7 text-sm font-medium text-white/60 backdrop-blur-sm transition hover:border-emerald-300/15 hover:bg-emerald-300/[0.025] hover:text-white"
+              >
+                Add a Resource
+              </Link>
+
+            </div>
+          </div>
+
+          {/* =================================================
+              FLOW CARDS
+          ================================================= */}
+
+          <div className="mt-20 grid gap-3 sm:grid-cols-4">
+
+            {[
+              "Resources",
+              "Community",
+              "Intelligence",
+              "Impact",
+            ].map(
+              (item, index) => (
+                <div
+                  key={item}
+                  className="group relative overflow-hidden rounded-2xl border border-white/[0.07] bg-black/[0.12] p-5 backdrop-blur-sm transition duration-300 hover:-translate-y-1 hover:border-emerald-300/15 hover:bg-emerald-300/[0.02]"
+                >
+
+                  <div className="flex items-center justify-between">
+
+                    <span className="text-[9px] uppercase tracking-[0.2em] text-white/20">
+                      {item}
+                    </span>
+
+                    <span className="text-[9px] text-emerald-300/35">
+                      0{index + 1}
+                    </span>
+
+                  </div>
+
+                  <div className="mt-7 h-px bg-gradient-to-r from-emerald-300/15 via-white/[0.06] to-transparent" />
+
+                  <p className="mt-4 text-sm text-white/45">
+                    Connected intelligence
+                    for a more circular city.
+                  </p>
+
                 </div>
+              )
+            )}
 
-                <h3 className="mt-6 text-lg font-semibold">
-                  {feature.title}
-                </h3>
-
-                <p className="mt-3 text-sm leading-6 text-white/40">
-                  {feature.description}
-                </p>
-
-                <div className="mt-6 flex items-center gap-2 text-xs font-medium text-emerald-300 opacity-0 transition group-hover:opacity-100">
-                  Explore feature
-                  <ArrowRight size={14} />
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </section>
-
-      {/* CTA */}
-      <section className="px-6 pb-24 lg:px-8">
-        <div className="mx-auto max-w-7xl overflow-hidden rounded-[2rem] border border-emerald-300/10 bg-emerald-300/[0.05] p-10 text-center sm:p-16">
-          <Building2
-            className="mx-auto text-emerald-300"
-            size={30}
-          />
-
-          <h2 className="mx-auto mt-6 max-w-2xl text-3xl font-semibold tracking-tight sm:text-4xl">
-            The city already has the resources.
-            <span className="block text-emerald-300">
-              NEXORA connects them.
-            </span>
-          </h2>
-
-          <button className="mt-8 rounded-full bg-emerald-300 px-7 py-3.5 font-semibold text-[#07130f] transition hover:bg-emerald-200">
-            Enter NEXORA
-          </button>
-        </div>
-      </section>
-
-      {/* FOOTER */}
-      <footer className="border-t border-white/10">
-        <div className="mx-auto flex max-w-7xl flex-col gap-4 px-6 py-8 text-xs text-white/30 sm:flex-row sm:items-center sm:justify-between lg:px-8">
-          <div>© 2026 NEXORA. Smart. Sustainable. Inclusive.</div>
-
-          <div className="flex gap-5">
-            <span>AI</span>
-            <span>GIS</span>
-            <span>IoT</span>
-            <span>Blockchain</span>
           </div>
         </div>
+
+        {/* ===================================================
+            BOTTOM FADE
+        =================================================== */}
+
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-[#020705] via-[#020705]/45 to-transparent" />
+
+      </section>
+
+      {/* =====================================================
+          PLATFORM SECTION
+      ===================================================== */}
+
+      <section className="relative border-t border-white/[0.06] bg-[#07130f]">
+
+        <div
+          className="pointer-events-none absolute inset-x-0 top-0 h-[260px]"
+          style={{
+            background:
+              "radial-gradient(ellipse 60% 100% at 50% 0%, rgba(16,185,129,0.04) 0%, transparent 78%)",
+          }}
+        />
+
+        <div className="relative mx-auto max-w-[1280px] px-5 py-24 sm:px-8 lg:px-10">
+
+          <div className="max-w-2xl">
+
+            <p className="text-[9px] uppercase tracking-[0.24em] text-emerald-300/55">
+              One connected ecosystem
+            </p>
+
+            <h2 className="mt-4 text-3xl font-medium tracking-[-0.03em] text-white sm:text-4xl">
+              Discover. Exchange.
+              Understand. Impact.
+            </h2>
+
+            <p className="mt-4 max-w-xl text-sm leading-7 text-white/30">
+              Setiap bagian ARVENA dibangun untuk
+              saling terhubung sehingga pengguna
+              tidak perlu berpindah-pindah platform
+              untuk memahami resource dan dampaknya.
+            </p>
+
+          </div>
+
+          <div className="mt-12 grid gap-4 md:grid-cols-2">
+
+            {platformCards.map(
+              (card) => (
+                <Link
+                  key={card.number}
+                  href={card.href}
+                  className="group relative overflow-hidden rounded-3xl border border-white/[0.08] bg-white/[0.018] p-7 transition-all duration-500 hover:-translate-y-1 hover:border-emerald-300/15 hover:bg-white/[0.028]"
+                >
+
+                  <div
+                    className="pointer-events-none absolute right-0 top-0 h-40 w-40 rounded-full blur-[60px]"
+                    style={{
+                      background:
+                        "rgba(16,185,129,0.035)",
+                    }}
+                  />
+
+                  <div className="relative">
+
+                    <div className="flex items-center justify-between">
+
+                      <span className="text-[9px] uppercase tracking-[0.2em] text-white/20">
+                        {card.eyebrow}
+                      </span>
+
+                      <span className="text-2xl font-light text-emerald-300/30">
+                        {card.number}
+                      </span>
+
+                    </div>
+
+                    <h3 className="mt-12 max-w-md text-xl font-medium leading-7 text-white/80 sm:text-2xl">
+                      {card.title}
+                    </h3>
+
+                    <p className="mt-4 max-w-lg text-sm leading-6 text-white/28">
+                      {card.description}
+                    </p>
+
+                    <div className="mt-8 flex items-center gap-2 text-xs text-emerald-300/55 transition group-hover:text-emerald-200">
+                      Explore
+
+                      <span className="transition group-hover:translate-x-1">
+                        →
+                      </span>
+                    </div>
+
+                  </div>
+                </Link>
+              )
+            )}
+
+          </div>
+        </div>
+      </section>
+
+      {/* =====================================================
+          FUTURE INTELLIGENCE
+      ===================================================== */}
+
+      <section className="relative overflow-hidden border-t border-white/[0.06] bg-[#040b08]">
+
+        <div
+          className="pointer-events-none absolute left-[-15%] top-[-120px] h-[360px] w-[850px] rotate-[15deg] blur-[95px]"
+          style={{
+            background:
+              "linear-gradient(90deg, transparent 0%, rgba(16,185,129,0.05) 30%, rgba(16,185,129,0.03) 58%, transparent 100%)",
+          }}
+        />
+
+        <div className="relative mx-auto max-w-5xl px-5 py-28 text-center sm:px-8">
+
+          <p className="text-[9px] uppercase tracking-[0.24em] text-emerald-300/55">
+            The connected layer
+          </p>
+
+          <h2 className="mx-auto mt-4 max-w-3xl text-3xl font-medium tracking-[-0.03em] sm:text-5xl">
+            From circular resources
+            to connected city intelligence.
+          </h2>
+
+          <p className="mx-auto mt-5 max-w-2xl text-sm leading-7 text-white/28">
+            ARVENA akan terus menghubungkan
+            resource intelligence, GIS, impact analysis,
+            community activity, dan Cirra menjadi
+            satu pengalaman yang semakin pintar.
+          </p>
+
+          <div className="mt-10 flex flex-wrap justify-center gap-2">
+
+            {[
+              "Circular Resources",
+              "GIS",
+              "Impact",
+              "Emissions",
+              "Community",
+              "Cirra AI",
+            ].map(
+              (item) => (
+                <span
+                  key={item}
+                  className="rounded-full border border-white/[0.07] bg-white/[0.018] px-4 py-2 text-[10px] text-white/30"
+                >
+                  {item}
+                </span>
+              )
+            )}
+
+          </div>
+
+        </div>
+      </section>
+
+      {/* =====================================================
+          FOOTER
+      ===================================================== */}
+
+      <footer className="border-t border-white/[0.06] bg-[#030705]">
+
+        <div className="mx-auto flex max-w-[1280px] flex-col gap-3 px-5 py-8 sm:px-8 lg:flex-row lg:items-center lg:justify-between lg:px-10">
+
+          <div className="flex items-center gap-3">
+
+            <Image
+              src="/arvena-marks.png"
+              alt="ARVENA"
+              width={34}
+              height={34}
+              className="h-8 w-8 object-contain"
+            />
+
+            <div>
+              <p className="text-xs font-medium tracking-[0.16em] text-white/55">
+                ARVENA
+              </p>
+
+              <p className="text-[9px] text-white/20">
+                Connected City Ecosystem
+              </p>
+            </div>
+
+          </div>
+
+          <p className="text-[9px] text-white/20">
+            Built for circular and connected cities.
+          </p>
+
+        </div>
+
       </footer>
+
     </main>
   );
 }
-
