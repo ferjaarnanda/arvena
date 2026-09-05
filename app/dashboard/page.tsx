@@ -1,36 +1,56 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { useLanguage } from "@/lib/i18n/context";
+import {
+  LayoutDashboard,
+  Package,
+  Repeat,
+  Users,
+  Activity,
+  Radio,
+  ShieldCheck,
+  Plus,
+  ArrowUpRight,
+  User,
+  Clock,
+  Sparkles,
+  Inbox,
+  Send,
+  MapPin,
+} from "lucide-react";
 
 type Profile = {
   full_name: string | null;
+  username: string | null;
+  city: string | null;
+  role: string | null;
 };
 
 type DashboardData = {
+  userId: string;
   userEmail: string;
   profile: Profile | null;
-  resourceCount: number;
-  matchCount: number;
-  totalImpact: number;
+  myResourceCount: number;
+  totalMarketplaceResources: number;
+  incomingRequestsCount: number;
+  outgoingRequestsCount: number;
+  communityCount: number;
+  totalImpactCO2: number;
 };
 
 export default function DashboardPage() {
-  const supabase = createClient();
+  const { t } = useLanguage();
+  const supabase = useMemo(() => createClient(), []);
   const router = useRouter();
 
-  const [data, setData] =
-    useState<DashboardData | null>(null);
-
-  const [loading, setLoading] =
-    useState(true);
+  const [data, setData] = useState<DashboardData | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    let mounted = true;
-
     async function loadDashboard() {
       setLoading(true);
 
@@ -44,377 +64,274 @@ export default function DashboardPage() {
         return;
       }
 
-      const {
-        data: profile,
-      } = await supabase
+      const { data: profile } = await supabase
         .from("profiles")
-        .select("full_name")
+        .select("full_name, username, city, role")
         .eq("id", user.id)
         .single();
 
-      const {
-        count: resourceCount,
-      } = await supabase
+      // My resources count
+      const { count: myResCount } = await supabase
         .from("resources")
-        .select("*", {
-          count: "exact",
-          head: true,
-        });
+        .select("*", { count: "exact", head: true })
+        .eq("owner_id", user.id);
 
-      const {
-        count: matchCount,
-      } = await supabase
-        .from("matches")
-        .select("*", {
-          count: "exact",
-          head: true,
-        });
+      // Total marketplace resources
+      const { count: totalResCount } = await supabase
+        .from("resources")
+        .select("*", { count: "exact", head: true })
+        .eq("status", "available");
 
-      const {
-        data: impacts,
-      } = await supabase
-        .from("impact_records")
-        .select("*");
+      // Incoming requests on my resources
+      const { data: myResources } = await supabase
+        .from("resources")
+        .select("id")
+        .eq("owner_id", user.id);
 
-      const totalImpact =
-        impacts?.reduce(
-          (sum, item) =>
-            sum +
-            Number(
-              item.amount ??
-                item.quantity ??
-                0
-            ),
-          0
-        ) ?? 0;
-
-      if (!mounted) {
-        return;
+      const myResourceIds = (myResources || []).map((r) => r.id);
+      let incomingCount = 0;
+      if (myResourceIds.length > 0) {
+        const { count } = await supabase
+          .from("resource_requests")
+          .select("*", { count: "exact", head: true })
+          .in("resource_id", myResourceIds)
+          .eq("status", "pending");
+        incomingCount = count || 0;
       }
 
+      // Outgoing requests by me
+      const { count: outgoingCount } = await supabase
+        .from("resource_requests")
+        .select("*", { count: "exact", head: true })
+        .eq("requester_id", user.id);
+
+      // Communities count
+      const { count: commCount } = await supabase
+        .from("communities")
+        .select("*", { count: "exact", head: true });
+
+      // Impact records
+      const { data: impacts } = await supabase.from("impact_records").select("co2_avoided_kg");
+      const totalCO2 = impacts?.reduce((sum, item) => sum + Number(item.co2_avoided_kg || 0), 0) || 0;
+
       setData({
+        userId: user.id,
         userEmail: user.email ?? "",
         profile: profile ?? null,
-        resourceCount:
-          resourceCount ?? 0,
-        matchCount:
-          matchCount ?? 0,
-        totalImpact,
+        myResourceCount: myResCount ?? 0,
+        totalMarketplaceResources: totalResCount ?? 0,
+        incomingRequestsCount: incomingCount,
+        outgoingRequestsCount: outgoingCount ?? 0,
+        communityCount: commCount ?? 0,
+        totalImpactCO2: totalCO2,
       });
 
       setLoading(false);
     }
 
     loadDashboard();
-
-    return () => {
-      mounted = false;
-    };
-  }, [router, supabase]);
+  }, [supabase, router]);
 
   if (loading) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-[#06120e] text-white">
-        <div className="flex flex-col items-center">
-
-          <Image
-            src="/arvena-marks.png"
-            alt="ARVENA"
-            width={72}
-            height={72}
-            className="h-14 w-14 object-contain"
-          />
-
-          <p className="mt-4 text-xs text-white/30">
-            Loading ARVENA...
-          </p>
-
-        </div>
+      <main className="flex min-h-screen items-center justify-center bg-[#092328] text-white">
+        <div className="h-10 w-10 animate-spin rounded-full border-2 border-white/10 border-t-emerald-400" />
       </main>
     );
   }
 
-  if (!data) {
-    return null;
-  }
+  const displayName = data?.profile?.full_name || data?.profile?.username || data?.userEmail.split("@")[0] || "User";
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-[#06120e] px-5 py-10 text-white sm:px-6 sm:py-12">
-
-      {/* =====================================================
-          BACKGROUND
-      ===================================================== */}
-
-      <div
-        className="pointer-events-none absolute left-[-15%] top-[-20%] h-[700px] w-[1000px] rotate-[20deg] blur-[110px]"
-        style={{
-          background:
-            "linear-gradient(90deg, transparent 0%, rgba(38,180,112,0.03) 20%, rgba(38,180,112,0.06) 42%, rgba(38,180,112,0.025) 70%, transparent 100%)",
-        }}
-      />
-
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_38%,rgba(0,0,0,0.16)_100%)]" />
-
-      <div className="relative mx-auto max-w-6xl">
-
+    <main className="min-h-screen bg-[#092328] px-4 py-8 sm:px-6 sm:py-12 text-white">
+      <div className="mx-auto max-w-7xl">
         {/* =====================================================
-            ARVENA BRAND
+            HEADER
         ===================================================== */}
-
-        <div className="border-b border-white/[0.07] pb-8">
-
-          <div className="flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
-
-            {/* =================================================
-                LOCKUP UTAMA
-            ================================================= */}
-
-            <div>
-
-              <div className="w-[250px] sm:w-[300px]">
-                <Image
-                  src="/arvena-lockup.png"
-                  alt="ARVENA Connected City Ecosystem"
-                  width={900}
-                  height={320}
-                  priority
-                  className="h-auto w-full object-contain"
-                />
-              </div>
-
-              <p className="mt-6 text-[9px] font-medium uppercase tracking-[0.24em] text-emerald-300/55">
-                ARVENA DASHBOARD
-              </p>
-
-              <h1 className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">
-                Welcome,{" "}
-                {data.profile?.full_name ||
-                  "ARVENA user"}.
-              </h1>
-
-              <p className="mt-3 text-sm text-white/30">
-                {data.userEmail}
-              </p>
-
+        <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between border-b border-white/[0.07] pb-8">
+          <div>
+            <div className="inline-flex items-center gap-2 rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3.5 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-emerald-300">
+              <LayoutDashboard className="h-3.5 w-3.5" />
+              <span>ARVENA ECOSYSTEM DASHBOARD</span>
             </div>
 
-            {/* =================================================
-                DASHBOARD DESCRIPTION
-            ================================================= */}
+            <h1 className="mt-4 text-3xl font-bold tracking-tight sm:text-4xl md:text-5xl text-white">
+              Welcome, {displayName}
+            </h1>
 
-            <div className="max-w-sm lg:text-right">
-
-              <p className="text-[9px] uppercase tracking-[0.2em] text-white/20">
-                Connected intelligence
-              </p>
-
-              <p className="mt-2 text-sm leading-6 text-white/30">
-                Kelola resource, request,
-                exchange, dan impact dari
-                satu ruang ARVENA.
-              </p>
-
-            </div>
-
-          </div>
-        </div>
-
-        {/* =====================================================
-            STATISTICS
-        ===================================================== */}
-
-        <div className="mt-8 grid gap-4 md:grid-cols-3">
-
-          {/* RESOURCES */}
-
-          <div className="group rounded-3xl border border-white/[0.08] bg-white/[0.018] p-6 transition-all duration-300 hover:-translate-y-0.5 hover:border-emerald-300/15 hover:bg-white/[0.025]">
-
-            <div className="text-xs uppercase tracking-[0.16em] text-white/25">
-              Resources
-            </div>
-
-            <div className="mt-3 text-3xl font-semibold">
-              {data.resourceCount}
-            </div>
-
-            <p className="mt-2 text-xs leading-5 text-white/25">
-              Resource yang tersedia
-              dalam ekosistem ARVENA.
+            <p className="mt-2 text-xs text-white/40 flex items-center gap-2">
+              <span>{data?.userEmail}</span>
+              {data?.profile?.city && (
+                <>
+                  <span>•</span>
+                  <span className="inline-flex items-center gap-1"><MapPin className="h-3 w-3 text-emerald-400" /> {data.profile.city}</span>
+                </>
+              )}
             </p>
-
           </div>
 
-          {/* MATCHES */}
-
-          <div className="group rounded-3xl border border-white/[0.08] bg-white/[0.018] p-6 transition-all duration-300 hover:-translate-y-0.5 hover:border-emerald-300/15 hover:bg-white/[0.025]">
-
-            <div className="text-xs uppercase tracking-[0.16em] text-white/25">
-              Smart Matches
-            </div>
-
-            <div className="mt-3 text-3xl font-semibold">
-              {data.matchCount}
-            </div>
-
-            <p className="mt-2 text-xs leading-5 text-white/25">
-              Koneksi resource yang
-              berhasil ditemukan.
-            </p>
-
-          </div>
-
-          {/* IMPACT */}
-
-          <div className="group rounded-3xl border border-white/[0.08] bg-white/[0.018] p-6 transition-all duration-300 hover:-translate-y-0.5 hover:border-emerald-300/15 hover:bg-white/[0.025]">
-
-            <div className="text-xs uppercase tracking-[0.16em] text-white/25">
-              Impact
-            </div>
-
-            <div className="mt-3 text-3xl font-semibold">
-              {data.totalImpact} kg
-            </div>
-
-            <p className="mt-2 text-xs leading-5 text-white/25">
-              Total impact yang
-              tercatat pada ARVENA.
-            </p>
-
-          </div>
-
-        </div>
-
-        {/* =====================================================
-            QUICK ACTIONS
-        ===================================================== */}
-
-        <section className="mt-9">
-
-          <p className="text-[9px] font-medium uppercase tracking-[0.22em] text-white/25">
-            Quick Actions
-          </p>
-
-          <div className="mt-3 flex flex-wrap gap-3">
-
-            <Link
-              href="/resources"
-              className="rounded-xl bg-emerald-300 px-5 py-3 text-sm font-semibold text-[#06120e] transition hover:-translate-y-0.5 hover:bg-emerald-200"
-            >
-              Explore Resources
-            </Link>
-
+          <div className="flex items-center gap-3">
             <Link
               href="/resources/new"
-              className="rounded-xl border border-white/[0.08] bg-white/[0.018] px-5 py-3 text-sm text-white/60 transition hover:border-emerald-300/20 hover:bg-emerald-300/[0.03] hover:text-white"
+              className="inline-flex h-11 items-center gap-2 rounded-xl bg-[#2A835F] border border-[#12544F] px-6 text-sm font-bold text-white shadow-sm transition duration-200 hover:-translate-y-0.5 hover:bg-[#349e73]"
             >
-              + Add Resource
+              <Plus className="h-4 w-4" />
+              <span>List New Resource</span>
             </Link>
-
-            <Link
-              href="/my-requests"
-              className="rounded-xl border border-white/[0.08] bg-white/[0.018] px-5 py-3 text-sm text-white/60 transition hover:border-emerald-300/20 hover:bg-emerald-300/[0.03] hover:text-white"
-            >
-              My Requests
-            </Link>
-
-            <Link
-              href="/resource-requests"
-              className="rounded-xl border border-white/[0.08] bg-white/[0.018] px-5 py-3 text-sm text-white/60 transition hover:border-emerald-300/20 hover:bg-emerald-300/[0.03] hover:text-white"
-            >
-              Resource Requests
-            </Link>
-
           </div>
-        </section>
-
-        {/* =====================================================
-            ARVENA INTELLIGENCE CARD
-        ===================================================== */}
-
-        <section className="relative mt-10 overflow-hidden rounded-3xl border border-emerald-300/10 bg-emerald-300/[0.022]">
-
-          <div
-            className="pointer-events-none absolute right-[-100px] top-[-100px] h-[320px] w-[320px] rounded-full blur-[100px]"
-            style={{
-              background:
-                "rgba(16,185,129,0.055)",
-            }}
-          />
-
-          <div className="relative p-7 sm:p-8">
-
-            <div className="flex flex-col gap-8 md:flex-row md:items-center md:justify-between">
-
-              <div className="max-w-2xl">
-
-                <p className="text-[9px] font-medium uppercase tracking-[0.22em] text-emerald-300/55">
-                  Connected intelligence
-                </p>
-
-                <h2 className="mt-3 text-2xl font-medium tracking-tight text-white">
-                  Your city. Your resources.
-                  Your impact.
-                </h2>
-
-                <p className="mt-3 text-sm leading-6 text-white/30">
-                  Gunakan ARVENA untuk menemukan
-                  resource, menghubungkan kebutuhan,
-                  memahami impact, dan nantinya
-                  menjelajahi GIS serta kecerdasan
-                  kota melalui Cirra.
-                </p>
-
-              </div>
-
-              <Link
-                href="/explore"
-                className="shrink-0 rounded-xl border border-emerald-300/15 bg-emerald-300/[0.045] px-5 py-3 text-sm font-medium text-emerald-200 transition hover:border-emerald-300/25 hover:bg-emerald-300/[0.075]"
-              >
-                Explore ARVENA
-              </Link>
-
-            </div>
-
-          </div>
-        </section>
-
-        {/* =====================================================
-            BRAND FOOTER
-        ===================================================== */}
-
-        <div className="mt-10 pb-8">
-
-          <div className="flex items-center gap-4">
-
-            {/* LOGOGRAM */}
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center">
-              <Image
-                src="/arvena-marks.png"
-                alt="ARVENA"
-                width={60}
-                height={60}
-                className="h-10 w-10 object-contain"
-              />
-            </div>
-
-            {/* WORDMARK */}
-
-            <div>
-
-              <p className="text-sm font-semibold tracking-[0.16em] text-white/55">
-                ARVENA
-              </p>
-
-              <p className="mt-0.5 text-[9px] tracking-[0.12em] text-emerald-300/40">
-                Connected City Ecosystem
-              </p>
-
-            </div>
-
-          </div>
-
         </div>
 
+        {/* =====================================================
+            STATS OVERVIEW CARDS
+        ===================================================== */}
+        <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="rounded-3xl border border-white/10 bg-gradient-to-b from-white/[0.03] to-white/[0.01] p-6">
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-white/40 uppercase tracking-wider font-semibold">My Active Resources</span>
+              <Package className="h-4 w-4 text-emerald-400" />
+            </div>
+            <span className="mt-4 block text-3xl font-extrabold text-white">{data?.myResourceCount}</span>
+            <Link href="/resources" className="mt-2 text-[11px] text-emerald-400 hover:underline inline-flex items-center gap-1">
+              <span>Manage your inventory</span>
+              <ArrowUpRight className="h-3 w-3" />
+            </Link>
+          </div>
+
+          <div className="rounded-3xl border border-white/10 bg-gradient-to-b from-white/[0.03] to-white/[0.01] p-6">
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-white/40 uppercase tracking-wider font-semibold">Incoming Requests</span>
+              <Inbox className="h-4 w-4 text-emerald-400" />
+            </div>
+            <span className="mt-4 block text-3xl font-extrabold text-emerald-300">{data?.incomingRequestsCount}</span>
+            <Link href="/resource-requests" className="mt-2 text-[11px] text-emerald-400 hover:underline inline-flex items-center gap-1">
+              <span>Review pending offers</span>
+              <ArrowUpRight className="h-3 w-3" />
+            </Link>
+          </div>
+
+          <div className="rounded-3xl border border-white/10 bg-gradient-to-b from-white/[0.03] to-white/[0.01] p-6">
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-white/40 uppercase tracking-wider font-semibold">Outgoing Bids</span>
+              <Send className="h-4 w-4 text-emerald-400" />
+            </div>
+            <span className="mt-4 block text-3xl font-extrabold text-white">{data?.outgoingRequestsCount}</span>
+            <Link href="/my-requests" className="mt-2 text-[11px] text-emerald-400 hover:underline inline-flex items-center gap-1">
+              <span>Track your requests</span>
+              <ArrowUpRight className="h-3 w-3" />
+            </Link>
+          </div>
+
+          <div className="rounded-3xl border border-white/10 bg-gradient-to-b from-white/[0.03] to-white/[0.01] p-6">
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-white/40 uppercase tracking-wider font-semibold">Total City Hubs</span>
+              <Users className="h-4 w-4 text-emerald-400" />
+            </div>
+            <span className="mt-4 block text-3xl font-extrabold text-white">{data?.communityCount}</span>
+            <Link href="/community" className="mt-2 text-[11px] text-emerald-400 hover:underline inline-flex items-center gap-1">
+              <span>Explore communities</span>
+              <ArrowUpRight className="h-3 w-3" />
+            </Link>
+          </div>
+        </div>
+
+        {/* =====================================================
+            QUICK ACTIONS GRID
+        ===================================================== */}
+        <div className="mt-12">
+          <h2 className="text-lg font-bold text-white mb-6">Quick Ecosystem Navigation</h2>
+
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            <Link
+              href="/explore"
+              className="group rounded-3xl border border-white/10 bg-white/[0.02] p-6 hover:border-emerald-400/30 hover:bg-white/[0.04] transition duration-300"
+            >
+              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-400/10 text-emerald-400">
+                <Package className="h-5 w-5" />
+              </div>
+              <h3 className="mt-4 text-base font-bold text-white group-hover:text-emerald-300 transition">
+                Browse Marketplace
+              </h3>
+              <p className="mt-1 text-xs text-white/40 leading-5">
+                Search secondary materials, filter by district, and negotiate circular supplies.
+              </p>
+            </Link>
+
+            <Link
+              href="/exchange"
+              className="group rounded-3xl border border-white/10 bg-white/[0.02] p-6 hover:border-emerald-400/30 hover:bg-white/[0.04] transition duration-300"
+            >
+              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-400/10 text-emerald-400">
+                <Repeat className="h-5 w-5" />
+              </div>
+              <h3 className="mt-4 text-base font-bold text-white group-hover:text-emerald-300 transition">
+                Circular Exchange & Barter
+              </h3>
+              <p className="mt-1 text-xs text-white/40 leading-5">
+                Propose direct material-to-material swaps and automated smart matches.
+              </p>
+            </Link>
+
+            <Link
+              href="/community"
+              className="group rounded-3xl border border-white/10 bg-white/[0.02] p-6 hover:border-emerald-400/30 hover:bg-white/[0.04] transition duration-300"
+            >
+              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-400/10 text-emerald-400">
+                <Users className="h-5 w-5" />
+              </div>
+              <h3 className="mt-4 text-base font-bold text-white group-hover:text-emerald-300 transition">
+                Community Hubs & Workshops
+              </h3>
+              <p className="mt-1 text-xs text-white/40 leading-5">
+                Participate in local drop-offs, circular masterclasses, and neighborhood composting.
+              </p>
+            </Link>
+
+            <Link
+              href="/impact"
+              className="group rounded-3xl border border-white/10 bg-white/[0.02] p-6 hover:border-emerald-400/30 hover:bg-white/[0.04] transition duration-300"
+            >
+              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-400/10 text-emerald-400">
+                <Activity className="h-5 w-5" />
+              </div>
+              <h3 className="mt-4 text-base font-bold text-white group-hover:text-emerald-300 transition">
+                GIS Routing & Emission Calculator
+              </h3>
+              <p className="mt-1 text-xs text-white/40 leading-5">
+                Interactive route planning and vehicle-specific CO₂ calculation engine.
+              </p>
+            </Link>
+
+            <Link
+              href="/iot"
+              className="group rounded-3xl border border-white/10 bg-white/[0.02] p-6 hover:border-emerald-400/30 hover:bg-white/[0.04] transition duration-300"
+            >
+              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-400/10 text-emerald-400">
+                <Radio className="h-5 w-5" />
+              </div>
+              <h3 className="mt-4 text-base font-bold text-white group-hover:text-emerald-300 transition">
+                IoT Sensor Telemetry
+              </h3>
+              <p className="mt-1 text-xs text-white/40 leading-5">
+                Live monitoring of automated weighing nodes, smart bins, and collection centers.
+              </p>
+            </Link>
+
+            <Link
+              href="/traceability"
+              className="group rounded-3xl border border-white/10 bg-white/[0.02] p-6 hover:border-emerald-400/30 hover:bg-white/[0.04] transition duration-300"
+            >
+              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-400/10 text-emerald-400">
+                <ShieldCheck className="h-5 w-5" />
+              </div>
+              <h3 className="mt-4 text-base font-bold text-white group-hover:text-emerald-300 transition">
+                Traceability & Hash Verification
+              </h3>
+              <p className="mt-1 text-xs text-white/40 leading-5">
+                Inspect deterministic SHA-256 integrity records for circular transactions.
+              </p>
+            </Link>
+          </div>
+        </div>
       </div>
     </main>
   );

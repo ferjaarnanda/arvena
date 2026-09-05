@@ -53,7 +53,7 @@ const originIcon =
         height: 20px;
         border-radius: 9999px;
         background: #34d399;
-        border: 3px solid #06120e;
+        border: 3px solid #092328;
         box-shadow:
           0 0 0 4px rgba(52,211,153,0.18),
           0 8px 24px rgba(0,0,0,0.35);
@@ -96,7 +96,6 @@ const destinationIcon =
   });
 
 function MapClickHandler({
-  activeTarget,
   onMapPick,
 }: {
   activeTarget: PointTarget;
@@ -237,7 +236,7 @@ export default function ImpactMap({
     );
 
   return (
-    <div className="relative h-[520px] w-full overflow-hidden rounded-3xl border border-white/[0.08] bg-[#07130f]">
+    <div className="relative isolate z-0 h-[520px] w-full overflow-hidden rounded-3xl border border-white/[0.08] bg-[#092328]">
 
       <MapContainer
         center={
@@ -363,7 +362,7 @@ export default function ImpactMap({
           MAP STATUS
       ===================================================== */}
 
-      <div className="pointer-events-none absolute left-4 top-4 z-[500] rounded-xl border border-white/10 bg-[#06120e]/85 px-3 py-2 backdrop-blur-md">
+      <div className="pointer-events-none absolute left-4 top-4 z-[500] rounded-xl border border-white/10 bg-[#092328]/85 px-3 py-2 backdrop-blur-md">
 
         <p className="text-[9px] uppercase tracking-[0.16em] text-emerald-300/65">
           {activeTarget ===
@@ -378,7 +377,7 @@ export default function ImpactMap({
 
       </div>
 
-      <div className="pointer-events-none absolute bottom-4 left-4 z-[500] rounded-xl border border-white/10 bg-[#06120e]/85 px-3 py-2 text-[9px] text-white/30 backdrop-blur-md">
+      <div className="pointer-events-none absolute bottom-4 left-4 z-[500] rounded-xl border border-white/10 bg-[#092328]/85 px-3 py-2 text-[9px] text-white/30 backdrop-blur-md">
         © OpenStreetMap contributors
       </div>
     </div>

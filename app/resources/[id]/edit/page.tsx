@@ -8,7 +8,27 @@ import {
 import { createClient } from "@/lib/supabase/client";
 import { useParams, useRouter } from "next/navigation";
 
-const MAX_DETAIL_IMAGES = 3;
+import type { User } from "@supabase/supabase-js";
+
+type ResourceRecord = {
+  id: string;
+  owner_id: string;
+  title: string;
+  description: string | null;
+  category: string;
+  custom_category: string | null;
+  quantity: number;
+  unit: string;
+  price: number | null;
+  negotiation_percent: number | null;
+  province: string | null;
+  city: string | null;
+  district: string | null;
+  images: string[] | null;
+  status: string;
+  [key: string]: unknown;
+};
+
 const MAX_TOTAL_SIZE = 20 * 1024 * 1024;
 
 export default function EditResourcePage() {
@@ -18,8 +38,8 @@ export default function EditResourcePage() {
 
   const resourceId = params.id as string;
 
-  const [user, setUser] = useState<any>(null);
-  const [resource, setResource] = useState<any>(null);
+  const [user, setUser] = useState<User | null>(null);
+  const [resource, setResource] = useState<ResourceRecord | null>(null);
 
   // ==========================================
   // FORM
@@ -30,6 +50,8 @@ export default function EditResourcePage() {
     useState("");
   const [category, setCategory] =
     useState("organic");
+  const [customCategory, setCustomCategory] =
+    useState("");
   const [quantity, setQuantity] =
     useState("");
   const [unit, setUnit] = useState("kg");
@@ -128,6 +150,9 @@ export default function EditResourcePage() {
       );
       setCategory(
         data.category || "organic"
+      );
+      setCustomCategory(
+        data.custom_category || ""
       );
       setQuantity(
         String(data.quantity ?? "")
@@ -349,6 +374,11 @@ export default function EditResourcePage() {
   ) {
     e.preventDefault();
 
+    if (!user) {
+      setError("Silakan login terlebih dahulu.");
+      return;
+    }
+
     setSaving(true);
     setError("");
     setSuccess("");
@@ -555,6 +585,10 @@ export default function EditResourcePage() {
         description:
           description.trim(),
         category,
+        custom_category:
+          category === "other"
+            ? customCategory.trim()
+            : null,
         quantity:
           numericQuantity,
         unit,
@@ -784,10 +818,30 @@ export default function EditResourcePage() {
               </option>
 
               <option value="other">
-                Other
+                Other Material
               </option>
             </select>
           </div>
+
+          {/* CUSTOM CATEGORY INPUT (IF OTHER) */}
+          {category === "other" && (
+            <div className="rounded-2xl border border-emerald-300/20 bg-emerald-300/[0.03] p-4 transition-all animate-in fade-in slide-in-from-top-2 duration-300">
+              <label className="mb-2 block text-sm font-medium text-emerald-300">
+                Custom Material / Resource Type *
+              </label>
+              <input
+                type="text"
+                required
+                value={customCategory}
+                onChange={(e) => setCustomCategory(e.target.value)}
+                placeholder="Contoh: Sisa Kain Perca, Palet Kayu Pinus, Scrap Karet..."
+                className="w-full rounded-xl border border-emerald-300/30 bg-[#07130f] px-4 py-3 text-white outline-none focus:border-emerald-300 focus:ring-1 focus:ring-emerald-300"
+              />
+              <p className="mt-1.5 text-xs text-white/40">
+                Sebutkan jenis material/sumber daya secara spesifik agar mudah dicari di marketplace.
+              </p>
+            </div>
+          )}
 
           {/* QUANTITY + UNIT */}
 

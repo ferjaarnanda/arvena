@@ -1,453 +1,339 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
-
-const platformCards = [
-  {
-    number: "01",
-    eyebrow: "Discover",
-    title:
-      "Find the resources your city can reuse.",
-    description:
-      "Explore materials, surplus resources, and circular opportunities available around your city.",
-    href: "/explore",
-  },
-  {
-    number: "02",
-    eyebrow: "Exchange",
-    title:
-      "Turn unused resources into new value.",
-    description:
-      "Connect people who have resources with people who need them through a smarter exchange flow.",
-    href: "/exchange",
-  },
-  {
-    number: "03",
-    eyebrow: "Impact",
-    title:
-      "See the environmental value behind every action.",
-    description:
-      "Understand material recovery, transport emissions, and environmental impact through connected data.",
-    href: "/impact",
-  },
-  {
-    number: "04",
-    eyebrow: "City",
-    title:
-      "Understand your city through circular intelligence.",
-    description:
-      "Combine resource activity, location intelligence, community data, and future GIS capabilities in one ecosystem.",
-    href: "/community",
-  },
-];
+import Image from "next/image";
+import { useMemo } from "react";
+import { useLanguage } from "@/lib/i18n/context";
+import {
+  Compass,
+  Repeat,
+  Users,
+  Calendar,
+  Activity,
+  Radio,
+  ShieldCheck,
+  Sparkles,
+  ArrowRight,
+  ArrowUpRight,
+  Leaf,
+  Recycle,
+  Layers,
+  Cpu,
+  CheckCircle2,
+  Lock,
+  Globe,
+  MapPin,
+  Scale,
+} from "lucide-react";
 
 export default function HomePage() {
+  const { t } = useLanguage();
+
   return (
-    <main className="min-h-screen overflow-hidden bg-[#020705] text-white">
+    <main className="min-h-screen bg-[#092328] text-white overflow-hidden selection:bg-emerald-400/20 selection:text-emerald-200">
+      {/* =====================================================
+          1. HERO SECTION WITH ATMOSPHERIC GLOW
+      ===================================================== */}
+      <section className="relative px-4 pt-16 pb-24 sm:px-6 sm:pt-28 sm:pb-32 lg:px-8">
+        {/* Atmospheric beam — soft green from upper-left */}
+        <div
+          className="pointer-events-none absolute left-0 top-0 h-[600px] w-[900px] -translate-x-1/4 -translate-y-1/4 rounded-full opacity-40"
+          style={{
+            background:
+              "radial-gradient(ellipse 70% 60% at 20% 20%, rgba(18,84,79,0.7) 0%, rgba(42,131,95,0.2) 45%, transparent 75%)",
+            filter: "blur(80px)",
+          }}
+        />
+        {/* Secondary soft glow center */}
+        <div
+          className="pointer-events-none absolute left-1/3 top-1/3 h-[400px] w-[600px] opacity-20"
+          style={{
+            background:
+              "radial-gradient(ellipse at center, rgba(42,131,95,0.5) 0%, transparent 70%)",
+            filter: "blur(100px)",
+          }}
+        />
+
+        <div className="relative mx-auto max-w-4xl text-center">
+          {/* Tagline Badge */}
+          <div className="inline-flex items-center gap-2 rounded-full border border-emerald-400/30 bg-emerald-400/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.2em] text-emerald-300">
+            <Sparkles className="h-3.5 w-3.5" />
+            <span>{t.landing.heroBadge}</span>
+          </div>
+
+          {/* Main Headline — refined scale */}
+          <h1 className="mt-6 text-3xl font-extrabold tracking-tight sm:text-5xl lg:text-[3.5rem] leading-[1.15] text-white">
+            {t.landing.heroTitle}
+          </h1>
+
+          {/* Subtitle */}
+          <p className="mx-auto mt-5 max-w-2xl text-sm leading-7 text-white/55 sm:text-base sm:leading-8">
+            {t.landing.heroSubtitle}
+          </p>
+
+          {/* CTA Buttons */}
+          <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
+            <Link
+              href="/explore"
+              className="flex items-center justify-center gap-2 w-full sm:w-auto rounded-2xl bg-[#2A835F] border border-[#12544F] px-7 py-3.5 text-sm font-bold text-white shadow-[0_4px_20px_rgba(42,131,95,0.4)] transition-all duration-300 hover:-translate-y-0.5 hover:bg-[#32a070] hover:shadow-[0_6px_24px_rgba(42,131,95,0.5)]"
+            >
+              <Compass className="h-4 w-4" />
+              <span>{t.landing.ctaExplore}</span>
+            </Link>
+
+            <Link
+              href="/community"
+              className="flex items-center justify-center gap-2 w-full sm:w-auto rounded-2xl border border-white/10 bg-white/[0.04] px-7 py-3.5 text-sm font-semibold text-white/90 transition-all duration-300 hover:-translate-y-0.5 hover:border-emerald-400/30 hover:bg-white/[0.07] hover:text-white"
+            >
+              <Users className="h-4 w-4 text-emerald-400" />
+              <span>{t.landing.ctaCommunity}</span>
+            </Link>
+          </div>
+
+          {/* Ecosystem Teaser — 3 short value props, NO fake numbers */}
+          <div className="mt-14 grid grid-cols-1 gap-4 sm:grid-cols-3 border-t border-white/[0.07] pt-10">
+            <div className="flex flex-col items-center gap-2 rounded-2xl border border-white/[0.06] bg-white/[0.015] p-5">
+              <Layers className="h-6 w-6 text-emerald-400 opacity-80" />
+              <span className="text-sm font-semibold text-white/90">Circular Marketplace</span>
+              <span className="text-xs text-white/40 text-center">Browse, list & exchange surplus materials</span>
+            </div>
+            <div className="flex flex-col items-center gap-2 rounded-2xl border border-white/[0.06] bg-white/[0.015] p-5">
+              <Users className="h-6 w-6 text-emerald-400 opacity-80" />
+              <span className="text-sm font-semibold text-white/90">Community Hubs</span>
+              <span className="text-xs text-white/40 text-center">Build local circular economy groups</span>
+            </div>
+            <div className="flex flex-col items-center gap-2 rounded-2xl border border-white/[0.06] bg-white/[0.015] p-5">
+              <Activity className="h-6 w-6 text-emerald-400 opacity-80" />
+              <span className="text-sm font-semibold text-white/90">Impact Tracking</span>
+              <span className="text-xs text-white/40 text-center">Measure & log your CO₂ avoidance</span>
+            </div>
+          </div>
+        </div>
+      </section>
 
       {/* =====================================================
-          HERO
+          2. THE PROBLEM VS ARVENA SOLUTION
       ===================================================== */}
-
-      <section className="relative isolate min-h-[760px] overflow-hidden">
-
-        {/* ===================================================
-            BASE
-        =================================================== */}
-
-        <div className="absolute inset-0 bg-[#020705]" />
-
-        {/* ===================================================
-            SOFT DIAGONAL GREEN LIGHT
-
-            Bukan full-page glow.
-            Cahaya padat mulai dari kiri atas,
-            bergerak diagonal ke tengah,
-            kemudian melebar dan melemah.
-        =================================================== */}
-
-        <div
-          className="pointer-events-none absolute -left-[260px] -top-[220px] h-[900px] w-[1250px] rotate-[23deg]"
-          style={{
-            background:
-              "linear-gradient(90deg, transparent 0%, rgba(72,220,145,0.025) 10%, rgba(65,215,140,0.07) 24%, rgba(62,210,136,0.12) 39%, rgba(58,200,130,0.08) 55%, rgba(42,170,108,0.045) 72%, transparent 100%)",
-            filter: "blur(48px)",
-          }}
-        />
-
-        {/* ===================================================
-            SOFT CORE
-        =================================================== */}
-
-        <div
-          className="pointer-events-none absolute -left-[170px] -top-[150px] h-[650px] w-[850px] rotate-[23deg]"
-          style={{
-            background:
-              "linear-gradient(90deg, transparent 0%, rgba(110,245,174,0.035) 12%, rgba(91,238,165,0.085) 28%, rgba(78,225,150,0.13) 43%, rgba(62,205,132,0.09) 58%, rgba(48,180,114,0.045) 75%, transparent 100%)",
-            filter: "blur(34px)",
-          }}
-        />
-
-        {/* ===================================================
-            AMBIENT LIGHT AROUND CENTER
-        =================================================== */}
-
-        <div
-          className="pointer-events-none absolute left-[28%] top-[18%] h-[500px] w-[700px]"
-          style={{
-            background:
-              "radial-gradient(ellipse, rgba(28,150,92,0.055) 0%, rgba(22,125,77,0.035) 36%, rgba(13,95,59,0.02) 58%, transparent 78%)",
-            filter: "blur(65px)",
-          }}
-        />
-
-        {/* ===================================================
-            VERY SUBTLE GREEN ON RIGHT
-            Hanya supaya page tidak mati total.
-        =================================================== */}
-
-        <div
-          className="pointer-events-none absolute right-[-300px] top-[180px] h-[500px] w-[650px]"
-          style={{
-            background:
-              "radial-gradient(ellipse, rgba(20,110,70,0.025) 0%, transparent 72%)",
-            filter: "blur(75px)",
-          }}
-        />
-
-        {/* ===================================================
-            GRID
-        =================================================== */}
-
-        <div
-          className="pointer-events-none absolute inset-0 opacity-[0.035]"
-          style={{
-            backgroundImage:
-              "linear-gradient(rgba(255,255,255,0.14) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.14) 1px, transparent 1px)",
-            backgroundSize: "72px 72px",
-            maskImage:
-              "linear-gradient(to bottom, black 0%, black 55%, transparent 88%)",
-          }}
-        />
-
-        {/* ===================================================
-            CONTENT
-        =================================================== */}
-
-        <div className="relative mx-auto max-w-[1280px] px-5 pb-28 pt-24 sm:px-8 sm:pt-28 lg:px-10">
-
-          <div className="mx-auto max-w-5xl text-center">
-
-            {/* =================================================
-                ARVENA LOCKUP
-                SEKARANG PAKAI ASSET LANGSUNG
-            ================================================= */}
-
-            <div className="mx-auto flex justify-center">
-              <Image
-                src="/arvena-lockup.png"
-                alt="ARVENA Connected City Ecosystem"
-                width={900}
-                height={320}
-                priority
-                className="h-auto w-[250px] object-contain sm:w-[310px] lg:w-[390px]"
-              />
-            </div>
-
-            {/* =================================================
-                BADGE
-            ================================================= */}
-
-            <div className="mt-8 inline-flex items-center gap-2 rounded-full border border-emerald-300/[0.09] bg-emerald-300/[0.025] px-3.5 py-1.5 text-[9px] font-medium uppercase tracking-[0.24em] text-emerald-200/55 backdrop-blur-sm">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-300/75 shadow-[0_0_10px_rgba(110,231,183,0.6)]" />
-
-              Connected City Ecosystem
-            </div>
-
-            {/* =================================================
-                HEADLINE
-            ================================================= */}
-
-            <h1 className="mx-auto mt-7 max-w-4xl text-4xl font-medium leading-[1.04] tracking-[-0.04em] text-white sm:text-5xl lg:text-7xl">
-              A smarter city begins
-              with the resources
-              already around us.
-            </h1>
-
-            {/* =================================================
-                DESCRIPTION
-            ================================================= */}
-
-            <p className="mx-auto mt-6 max-w-2xl text-sm leading-7 text-white/35 sm:text-base">
-              ARVENA connects circular resources,
-              communities, environmental intelligence,
-              and city data into one connected ecosystem.
+      <section className="px-4 py-20 sm:px-6 lg:px-8 border-t border-white/[0.06] bg-[#07130f]">
+        <div className="mx-auto max-w-7xl">
+          <div className="text-center max-w-3xl mx-auto">
+            <span className="text-xs font-bold uppercase tracking-[0.2em] text-emerald-400">
+              MUNICIPAL CIRCULAR CHALLENGE
+            </span>
+            <h2 className="mt-3 text-3xl sm:text-4xl font-bold text-white">
+              Over 60% of Municipal Waste is Reusable Secondary Material
+            </h2>
+            <p className="mt-4 text-sm leading-7 text-white/50">
+              Coffee grounds, agricultural husks, factory textile scraps, and clean plastics are discarded daily because generators lack automated local matching with recyclers and creators.
             </p>
+          </div>
 
-            {/* =================================================
-                CTA
-            ================================================= */}
+          <div className="mt-12 grid gap-6 md:grid-cols-3">
+            <div className="rounded-3xl border border-red-500/20 bg-red-500/[0.03] p-8">
+              <div className="h-10 w-10 rounded-2xl bg-red-500/10 text-red-400 flex items-center justify-center font-bold text-lg mb-6">
+                ✕
+              </div>
+              <h3 className="text-lg font-bold text-white">Linear Landfill Overflow</h3>
+              <p className="mt-2 text-xs leading-6 text-white/50">
+                Secondary resources are mixed with municipal refuse, releasing methane and overwhelming city waste management facilities.
+              </p>
+            </div>
 
-            <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
+            <div className="rounded-3xl border border-amber-500/20 bg-amber-500/[0.03] p-8">
+              <div className="h-10 w-10 rounded-2xl bg-amber-500/10 text-amber-400 flex items-center justify-center font-bold text-lg mb-6">
+                !
+              </div>
+              <h3 className="text-lg font-bold text-white">Fragmented Local Supply</h3>
+              <p className="mt-2 text-xs leading-6 text-white/50">
+                Artisans, urban farmers, and composters struggle to find reliable nearby supplies of organic or packaging materials.
+              </p>
+            </div>
 
+            <div className="rounded-3xl border border-emerald-400/30 bg-emerald-400/[0.06] p-8 shadow-[0_0_30px_rgba(52,211,153,0.1)]">
+              <div className="h-10 w-10 rounded-2xl bg-emerald-400/20 text-emerald-300 flex items-center justify-center font-bold text-lg mb-6">
+                ✓
+              </div>
+              <h3 className="text-lg font-bold text-white">ARVENA Connected Loop</h3>
+              <p className="mt-2 text-xs leading-6 text-white/60">
+                Automated location-based matchmaking, real-time IoT weighing nodes, community hubs, and verified CO₂ reduction tracking.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* =====================================================
+          3. 6 CORE PILLARS OF ARVENA
+      ===================================================== */}
+      <section className="px-4 py-24 sm:px-6 lg:px-8 border-t border-white/[0.06] bg-[#040b08]">
+        <div className="mx-auto max-w-7xl">
+          <div className="text-center max-w-3xl mx-auto">
+            <span className="text-xs font-bold uppercase tracking-[0.2em] text-emerald-400">
+              INTEGRATED ARCHITECTURE
+            </span>
+            <h2 className="mt-3 text-3xl sm:text-4xl font-bold text-white">
+              {t.landing.pillarTitle}
+            </h2>
+            <p className="mt-4 text-sm leading-7 text-white/50">
+              {t.landing.pillarSubtitle}
+            </p>
+          </div>
+
+          <div className="mt-16 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {/* Pillar 1: Marketplace */}
+            <div className="group rounded-3xl border border-white/10 bg-gradient-to-b from-white/[0.03] to-white/[0.01] p-8 transition-all duration-300 hover:-translate-y-1.5 hover:border-emerald-400/30 hover:shadow-[0_20px_45px_rgba(0,0,0,0.45)]">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-emerald-400/30 bg-emerald-400/10 text-emerald-300">
+                <Compass className="h-6 w-6" />
+              </div>
+              <h3 className="mt-6 text-xl font-bold text-white">{t.landing.p1Title}</h3>
+              <p className="mt-3 text-xs leading-6 text-white/50">{t.landing.p1Desc}</p>
               <Link
                 href="/explore"
-                className="inline-flex h-12 items-center justify-center rounded-full bg-emerald-300 px-7 text-sm font-semibold text-[#06120e] transition hover:-translate-y-0.5 hover:bg-emerald-200"
+                className="mt-6 inline-flex items-center gap-1.5 text-xs font-bold text-emerald-400 group-hover:text-emerald-300"
               >
-                Explore ARVENA
+                <span>{t.nav.explore}</span>
+                <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-1" />
               </Link>
+            </div>
 
+            {/* Pillar 2: Community Hub */}
+            <div className="group rounded-3xl border border-white/10 bg-gradient-to-b from-white/[0.03] to-white/[0.01] p-8 transition-all duration-300 hover:-translate-y-1.5 hover:border-emerald-400/30 hover:shadow-[0_20px_45px_rgba(0,0,0,0.45)]">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-emerald-400/30 bg-emerald-400/10 text-emerald-300">
+                <Users className="h-6 w-6" />
+              </div>
+              <h3 className="mt-6 text-xl font-bold text-white">{t.landing.p2Title}</h3>
+              <p className="mt-3 text-xs leading-6 text-white/50">{t.landing.p2Desc}</p>
               <Link
-                href="/resources/new"
-                className="inline-flex h-12 items-center justify-center rounded-full border border-white/[0.09] bg-white/[0.015] px-7 text-sm font-medium text-white/60 backdrop-blur-sm transition hover:border-emerald-300/15 hover:bg-emerald-300/[0.025] hover:text-white"
+                href="/community"
+                className="mt-6 inline-flex items-center gap-1.5 text-xs font-bold text-emerald-400 group-hover:text-emerald-300"
               >
-                Add a Resource
+                <span>{t.nav.community}</span>
+                <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-1" />
               </Link>
+            </div>
 
+            {/* Pillar 3: Exchange */}
+            <div className="group rounded-3xl border border-white/10 bg-gradient-to-b from-white/[0.03] to-white/[0.01] p-8 transition-all duration-300 hover:-translate-y-1.5 hover:border-emerald-400/30 hover:shadow-[0_20px_45px_rgba(0,0,0,0.45)]">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-emerald-400/30 bg-emerald-400/10 text-emerald-300">
+                <Repeat className="h-6 w-6" />
+              </div>
+              <h3 className="mt-6 text-xl font-bold text-white">{t.landing.p3Title}</h3>
+              <p className="mt-3 text-xs leading-6 text-white/50">{t.landing.p3Desc}</p>
+              <Link
+                href="/exchange"
+                className="mt-6 inline-flex items-center gap-1.5 text-xs font-bold text-emerald-400 group-hover:text-emerald-300"
+              >
+                <span>{t.nav.exchange}</span>
+                <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-1" />
+              </Link>
+            </div>
+
+            {/* Pillar 4: CIRRA AI */}
+            <div className="group rounded-3xl border border-white/10 bg-gradient-to-b from-white/[0.03] to-white/[0.01] p-8 transition-all duration-300 hover:-translate-y-1.5 hover:border-emerald-400/30 hover:shadow-[0_20px_45px_rgba(0,0,0,0.45)]">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-emerald-400/30 bg-emerald-400/10 text-emerald-300">
+                <Sparkles className="h-6 w-6" />
+              </div>
+              <h3 className="mt-6 text-xl font-bold text-white">{t.landing.p4Title}</h3>
+              <p className="mt-3 text-xs leading-6 text-white/50">{t.landing.p4Desc}</p>
+              <span className="mt-6 inline-flex items-center gap-1.5 text-xs font-bold text-emerald-400">
+                <span>Available via Ask CIRRA in Top Navbar</span>
+              </span>
+            </div>
+
+            {/* Pillar 5: IoT Network */}
+            <div className="group rounded-3xl border border-white/10 bg-gradient-to-b from-white/[0.03] to-white/[0.01] p-8 transition-all duration-300 hover:-translate-y-1.5 hover:border-emerald-400/30 hover:shadow-[0_20px_45px_rgba(0,0,0,0.45)]">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-emerald-400/30 bg-emerald-400/10 text-emerald-300">
+                <Radio className="h-6 w-6" />
+              </div>
+              <h3 className="mt-6 text-xl font-bold text-white">{t.landing.p5Title}</h3>
+              <p className="mt-3 text-xs leading-6 text-white/50">{t.landing.p5Desc}</p>
+              <Link
+                href="/iot"
+                className="mt-6 inline-flex items-center gap-1.5 text-xs font-bold text-emerald-400 group-hover:text-emerald-300"
+              >
+                <span>{t.nav.iot}</span>
+                <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-1" />
+              </Link>
+            </div>
+
+            {/* Pillar 6: Cryptographic Traceability */}
+            <div className="group rounded-3xl border border-white/10 bg-gradient-to-b from-white/[0.03] to-white/[0.01] p-8 transition-all duration-300 hover:-translate-y-1.5 hover:border-emerald-400/30 hover:shadow-[0_20px_45px_rgba(0,0,0,0.45)]">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-emerald-400/30 bg-emerald-400/10 text-emerald-300">
+                <ShieldCheck className="h-6 w-6" />
+              </div>
+              <h3 className="mt-6 text-xl font-bold text-white">{t.landing.p6Title}</h3>
+              <p className="mt-3 text-xs leading-6 text-white/50">{t.landing.p6Desc}</p>
+              <Link
+                href="/traceability"
+                className="mt-6 inline-flex items-center gap-1.5 text-xs font-bold text-emerald-400 group-hover:text-emerald-300"
+              >
+                <span>{t.nav.traceability}</span>
+                <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-1" />
+              </Link>
             </div>
           </div>
-
-          {/* =================================================
-              FLOW CARDS
-          ================================================= */}
-
-          <div className="mt-20 grid gap-3 sm:grid-cols-4">
-
-            {[
-              "Resources",
-              "Community",
-              "Intelligence",
-              "Impact",
-            ].map(
-              (item, index) => (
-                <div
-                  key={item}
-                  className="group relative overflow-hidden rounded-2xl border border-white/[0.07] bg-black/[0.12] p-5 backdrop-blur-sm transition duration-300 hover:-translate-y-1 hover:border-emerald-300/15 hover:bg-emerald-300/[0.02]"
-                >
-
-                  <div className="flex items-center justify-between">
-
-                    <span className="text-[9px] uppercase tracking-[0.2em] text-white/20">
-                      {item}
-                    </span>
-
-                    <span className="text-[9px] text-emerald-300/35">
-                      0{index + 1}
-                    </span>
-
-                  </div>
-
-                  <div className="mt-7 h-px bg-gradient-to-r from-emerald-300/15 via-white/[0.06] to-transparent" />
-
-                  <p className="mt-4 text-sm text-white/45">
-                    Connected intelligence
-                    for a more circular city.
-                  </p>
-
-                </div>
-              )
-            )}
-
-          </div>
-        </div>
-
-        {/* ===================================================
-            BOTTOM FADE
-        =================================================== */}
-
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-[#020705] via-[#020705]/45 to-transparent" />
-
-      </section>
-
-      {/* =====================================================
-          PLATFORM SECTION
-      ===================================================== */}
-
-      <section className="relative border-t border-white/[0.06] bg-[#07130f]">
-
-        <div
-          className="pointer-events-none absolute inset-x-0 top-0 h-[260px]"
-          style={{
-            background:
-              "radial-gradient(ellipse 60% 100% at 50% 0%, rgba(16,185,129,0.04) 0%, transparent 78%)",
-          }}
-        />
-
-        <div className="relative mx-auto max-w-[1280px] px-5 py-24 sm:px-8 lg:px-10">
-
-          <div className="max-w-2xl">
-
-            <p className="text-[9px] uppercase tracking-[0.24em] text-emerald-300/55">
-              One connected ecosystem
-            </p>
-
-            <h2 className="mt-4 text-3xl font-medium tracking-[-0.03em] text-white sm:text-4xl">
-              Discover. Exchange.
-              Understand. Impact.
-            </h2>
-
-            <p className="mt-4 max-w-xl text-sm leading-7 text-white/30">
-              Setiap bagian ARVENA dibangun untuk
-              saling terhubung sehingga pengguna
-              tidak perlu berpindah-pindah platform
-              untuk memahami resource dan dampaknya.
-            </p>
-
-          </div>
-
-          <div className="mt-12 grid gap-4 md:grid-cols-2">
-
-            {platformCards.map(
-              (card) => (
-                <Link
-                  key={card.number}
-                  href={card.href}
-                  className="group relative overflow-hidden rounded-3xl border border-white/[0.08] bg-white/[0.018] p-7 transition-all duration-500 hover:-translate-y-1 hover:border-emerald-300/15 hover:bg-white/[0.028]"
-                >
-
-                  <div
-                    className="pointer-events-none absolute right-0 top-0 h-40 w-40 rounded-full blur-[60px]"
-                    style={{
-                      background:
-                        "rgba(16,185,129,0.035)",
-                    }}
-                  />
-
-                  <div className="relative">
-
-                    <div className="flex items-center justify-between">
-
-                      <span className="text-[9px] uppercase tracking-[0.2em] text-white/20">
-                        {card.eyebrow}
-                      </span>
-
-                      <span className="text-2xl font-light text-emerald-300/30">
-                        {card.number}
-                      </span>
-
-                    </div>
-
-                    <h3 className="mt-12 max-w-md text-xl font-medium leading-7 text-white/80 sm:text-2xl">
-                      {card.title}
-                    </h3>
-
-                    <p className="mt-4 max-w-lg text-sm leading-6 text-white/28">
-                      {card.description}
-                    </p>
-
-                    <div className="mt-8 flex items-center gap-2 text-xs text-emerald-300/55 transition group-hover:text-emerald-200">
-                      Explore
-
-                      <span className="transition group-hover:translate-x-1">
-                        →
-                      </span>
-                    </div>
-
-                  </div>
-                </Link>
-              )
-            )}
-
-          </div>
         </div>
       </section>
 
       {/* =====================================================
-          FUTURE INTELLIGENCE
+          4. CTA BANNER
       ===================================================== */}
-
-      <section className="relative overflow-hidden border-t border-white/[0.06] bg-[#040b08]">
-
-        <div
-          className="pointer-events-none absolute left-[-15%] top-[-120px] h-[360px] w-[850px] rotate-[15deg] blur-[95px]"
-          style={{
-            background:
-              "linear-gradient(90deg, transparent 0%, rgba(16,185,129,0.05) 30%, rgba(16,185,129,0.03) 58%, transparent 100%)",
-          }}
-        />
-
-        <div className="relative mx-auto max-w-5xl px-5 py-28 text-center sm:px-8">
-
-          <p className="text-[9px] uppercase tracking-[0.24em] text-emerald-300/55">
-            The connected layer
-          </p>
-
-          <h2 className="mx-auto mt-4 max-w-3xl text-3xl font-medium tracking-[-0.03em] sm:text-5xl">
-            From circular resources
-            to connected city intelligence.
+      <section className="px-4 py-20 sm:px-6 lg:px-8 border-t border-white/[0.06] bg-gradient-to-b from-[#06120e] to-[#040b08]">
+        <div className="mx-auto max-w-5xl rounded-3xl border border-emerald-400/30 bg-gradient-to-r from-emerald-400/[0.1] via-white/[0.02] to-transparent p-8 sm:p-12 text-center shadow-[0_0_40px_rgba(52,211,153,0.15)]">
+          <h2 className="text-3xl sm:text-4xl font-extrabold text-white">
+            Ready to Connect Your City to the Circular Economy?
           </h2>
-
-          <p className="mx-auto mt-5 max-w-2xl text-sm leading-7 text-white/28">
-            ARVENA akan terus menghubungkan
-            resource intelligence, GIS, impact analysis,
-            community activity, dan Cirra menjadi
-            satu pengalaman yang semakin pintar.
+          <p className="mx-auto mt-4 max-w-2xl text-sm leading-7 text-white/60">
+            Start diverting materials, collaborating with local hubs, and logging verified carbon avoidance today.
           </p>
 
-          <div className="mt-10 flex flex-wrap justify-center gap-2">
-
-            {[
-              "Circular Resources",
-              "GIS",
-              "Impact",
-              "Emissions",
-              "Community",
-              "Cirra AI",
-            ].map(
-              (item) => (
-                <span
-                  key={item}
-                  className="rounded-full border border-white/[0.07] bg-white/[0.018] px-4 py-2 text-[10px] text-white/30"
-                >
-                  {item}
-                </span>
-              )
-            )}
-
+          <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
+            <Link
+              href="/explore"
+              className="w-full sm:w-auto rounded-2xl bg-emerald-400 px-8 py-3.5 text-sm font-bold text-[#040b08] hover:bg-emerald-300 transition shadow-[0_0_25px_rgba(52,211,153,0.3)]"
+            >
+              Explore Marketplace Now
+            </Link>
+            <Link
+              href="/resources/new"
+              className="w-full sm:w-auto rounded-2xl border border-white/10 bg-white/[0.04] px-8 py-3.5 text-sm font-semibold text-white hover:bg-white/[0.08] transition"
+            >
+              + List Surplus Resource
+            </Link>
           </div>
-
         </div>
       </section>
 
       {/* =====================================================
-          FOOTER
+          5. FOOTER
       ===================================================== */}
-
-      <footer className="border-t border-white/[0.06] bg-[#030705]">
-
-        <div className="mx-auto flex max-w-[1280px] flex-col gap-3 px-5 py-8 sm:px-8 lg:flex-row lg:items-center lg:justify-between lg:px-10">
-
+      <footer className="border-t border-white/[0.08] bg-[#020705] px-4 py-12 sm:px-6 lg:px-8 text-white/50 text-xs">
+        <div className="mx-auto max-w-7xl flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="flex items-center gap-3">
-
             <Image
               src="/arvena-marks.png"
-              alt="ARVENA"
-              width={34}
-              height={34}
-              className="h-8 w-8 object-contain"
+              alt="ARVENA Mark"
+              width={24}
+              height={24}
+              className="object-contain opacity-80"
             />
-
-            <div>
-              <p className="text-xs font-medium tracking-[0.16em] text-white/55">
-                ARVENA
-              </p>
-
-              <p className="text-[9px] text-white/20">
-                Connected City Ecosystem
-              </p>
-            </div>
-
+            <span className="text-sm font-bold text-white tracking-wider">ARVENA</span>
+            <span>— Connected City Ecosystem</span>
           </div>
 
-          <p className="text-[9px] text-white/20">
-            Built for circular and connected cities.
-          </p>
+          <div className="flex flex-wrap gap-6 text-white/40">
+            <Link href="/explore" className="hover:text-emerald-300 transition">Marketplace</Link>
+            <Link href="/exchange" className="hover:text-emerald-300 transition">Exchange</Link>
+            <Link href="/community" className="hover:text-emerald-300 transition">Communities</Link>
+            <Link href="/community/events" className="hover:text-emerald-300 transition">Events</Link>
+            <Link href="/impact" className="hover:text-emerald-300 transition">Impact GIS</Link>
+            <Link href="/iot" className="hover:text-emerald-300 transition">IoT Network</Link>
+            <Link href="/traceability" className="hover:text-emerald-300 transition">Traceability</Link>
+          </div>
 
+          <p>© {new Date().getFullYear()} ARVENA. All rights reserved.</p>
         </div>
-
       </footer>
-
     </main>
   );
 }

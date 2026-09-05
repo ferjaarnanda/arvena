@@ -3,6 +3,37 @@
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useParams, useRouter } from "next/navigation";
+import { MapPin, Package, User as UserIcon } from "lucide-react";
+
+import type { User as SupabaseUser } from "@supabase/supabase-js";
+
+type OwnerProfile = {
+  full_name?: string | null;
+  username?: string | null;
+  avatar_url?: string | null;
+  city?: string | null;
+};
+
+type ResourceDetailRecord = {
+  id: string;
+  owner_id: string;
+  title: string;
+  description: string | null;
+  category: string;
+  custom_category: string | null;
+  quantity: number;
+  unit: string;
+  price: number | null;
+  negotiation_percent: number | null;
+  province: string | null;
+  city: string | null;
+  district: string | null;
+  images: string[] | null;
+  status: string;
+  created_at: string;
+  profiles?: OwnerProfile | null;
+  [key: string]: unknown;
+};
 
 export default function ResourceDetailPage() {
   const supabase = createClient();
@@ -11,8 +42,8 @@ export default function ResourceDetailPage() {
 
   const resourceId = params.id as string;
 
-  const [resource, setResource] = useState<any>(null);
-  const [user, setUser] = useState<any>(null);
+  const [resource, setResource] = useState<ResourceDetailRecord | null>(null);
+  const [user, setUser] = useState<SupabaseUser | null>(null);
 
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState(false);
@@ -163,6 +194,10 @@ export default function ResourceDetailPage() {
     );
 
     if (!confirmed) {
+      return;
+    }
+
+    if (!resource || !user) {
       return;
     }
 
@@ -437,8 +472,8 @@ export default function ResourceDetailPage() {
 
               <div className="text-center">
 
-                <div className="text-6xl opacity-20">
-                  📦
+                <div className="flex justify-center opacity-20">
+                  <Package className="h-16 w-16 text-emerald-300" />
                 </div>
 
                 <p className="mt-4 text-sm text-white/30">
@@ -463,7 +498,9 @@ export default function ResourceDetailPage() {
               <div className="flex flex-wrap gap-2">
 
                 <span className="rounded-full border border-emerald-300/20 bg-emerald-300/10 px-3 py-1 text-xs capitalize text-emerald-300">
-                  {resource.category}
+                  {resource.category === "other" && resource.custom_category
+                    ? resource.custom_category
+                    : resource.category}
                 </span>
 
                 <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-white/50">
@@ -494,10 +531,10 @@ export default function ResourceDetailPage() {
 
             {/* LOCATION */}
 
-            <p className="mt-3 text-sm text-white/40">
-              📍 {resource.city ||
-                "Location not specified"}
-            </p>
+            <div className="mt-3 flex items-center gap-1.5 text-sm text-white/40">
+              <MapPin className="h-4 w-4 text-emerald-300/80" />
+              <span>{resource.city || "Location not specified"}</span>
+            </div>
 
             {/* DESCRIPTION */}
 
@@ -711,7 +748,7 @@ export default function ResourceDetailPage() {
                 ) : (
 
                   <div className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-300/10 text-lg">
-                    👤
+                    <UserIcon className="h-5 w-5 text-emerald-300" />
                   </div>
                 )}
 

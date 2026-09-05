@@ -5,10 +5,24 @@ import { useRouter } from "next/navigation";
 import {
   useEffect,
   useState,
+  useMemo,
 } from "react";
+import {
+  Recycle,
+  Coins,
+  Search,
+  Leaf,
+  MapPin,
+  Compass,
+  ArrowUp,
+  ArrowRight,
+  RotateCcw,
+} from "lucide-react";
+import { useLanguage } from "@/lib/i18n/context";
 
 type CirraPanelProps = {
-  open: boolean;
+  open?: boolean;
+  isOpen?: boolean;
   onClose: () => void;
 };
 
@@ -16,7 +30,7 @@ type ExploreAction = {
   id: string;
   title: string;
   description: string;
-  icon: string;
+  icon: typeof Recycle;
 };
 
 type CirraResource = {
@@ -44,56 +58,74 @@ type ChatMessage = {
 const STORAGE_KEY =
   "arvena-cirra-conversation";
 
-const exploreActions: ExploreAction[] = [
-  {
-    id: "classify",
-    title: "Classify a Material",
-    description:
-      "Cari tahu jenis, kategori, dan potensi pemanfaatan suatu material.",
-    icon: "♻️",
-  },
-  {
-    id: "price",
-    title: "Check Resource Price",
-    description:
-      "Bantu memperkirakan harga resource berdasarkan kondisi, jumlah, dan data pasar.",
-    icon: "₽",
-  },
-  {
-    id: "resources",
-    title: "Find Resources",
-    description:
-      "Cari resource yang sesuai dengan kebutuhanmu di ekosistem ARVENA.",
-    icon: "🔎",
-  },
-  {
-    id: "impact",
-    title: "Calculate Impact",
-    description:
-      "Hitung potensi dampak lingkungan dari aktivitasmu.",
-    icon: "🌱",
-  },
-  {
-    id: "route",
-    title: "Route & Emissions",
-    description:
-      "Hitung perjalanan, jarak, dan estimasi emisi transportasi.",
-    icon: "📍",
-  },
-  {
-    id: "city",
-    title: "Explore My City",
-    description:
-      "Temukan insight resource dan aktivitas circular economy berdasarkan lokasi.",
-    icon: "🗺️",
-  },
-];
-
 export default function CirraPanel({
   open,
+  isOpen,
   onClose,
 }: CirraPanelProps) {
   const router = useRouter();
+  const { locale } = useLanguage();
+  const isPanelOpen = open ?? isOpen ?? false;
+
+  const exploreActions: ExploreAction[] = useMemo(
+    () => [
+      {
+        id: "classify",
+        title: locale === "id" ? "Klasifikasi Material" : "Classify a Material",
+        description:
+          locale === "id"
+            ? "Cari tahu jenis, kategori, dan potensi pemanfaatan suatu material."
+            : "Discover material type, circular category, and repurposing options.",
+        icon: Recycle,
+      },
+      {
+        id: "price",
+        title: locale === "id" ? "Cek Estimasi Harga" : "Check Resource Price",
+        description:
+          locale === "id"
+            ? "Bantu memperkirakan harga resource berdasarkan kondisi, jumlah, dan data pasar."
+            : "Estimate fair secondary resource prices based on condition and quantity.",
+        icon: Coins,
+      },
+      {
+        id: "resources",
+        title: locale === "id" ? "Temukan Resource" : "Find Resources",
+        description:
+          locale === "id"
+            ? "Cari resource yang sesuai dengan kebutuhanmu di ekosistem ARVENA."
+            : "Search for secondary materials matching your needs in ARVENA.",
+        icon: Search,
+      },
+      {
+        id: "impact",
+        title: locale === "id" ? "Hitung Dampak" : "Calculate Impact",
+        description:
+          locale === "id"
+            ? "Hitung potensi dampak lingkungan dan emisi dari aktivitasmu."
+            : "Calculate potential environmental benefits and emissions avoided.",
+        icon: Leaf,
+      },
+      {
+        id: "route",
+        title: locale === "id" ? "Rute & Emisi" : "Route & Emissions",
+        description:
+          locale === "id"
+            ? "Hitung perjalanan, jarak, dan estimasi emisi transportasi."
+            : "Calculate optimal transport routes and transport emissions.",
+        icon: MapPin,
+      },
+      {
+        id: "city",
+        title: locale === "id" ? "Eksplorasi Kotaku" : "Explore My City",
+        description:
+          locale === "id"
+            ? "Temukan insight resource dan aktivitas circular economy berdasarkan lokasi."
+            : "Discover local resource distribution and circular hubs near you.",
+        icon: Compass,
+      },
+    ],
+    [locale]
+  );
 
   const [chatMode, setChatMode] =
     useState(false);
@@ -121,7 +153,7 @@ export default function CirraPanel({
   // =========================================================
 
   useEffect(() => {
-    if (!open || hydrated) {
+    if (!isPanelOpen || hydrated) {
       return;
     }
 
@@ -190,7 +222,7 @@ export default function CirraPanel({
     } finally {
       setHydrated(true);
     }
-  }, [open, hydrated]);
+  }, [isPanelOpen, open, hydrated]);
 
   // =========================================================
   // SIMPAN CONVERSATION
@@ -228,7 +260,7 @@ export default function CirraPanel({
   // Jangan hapus conversation.
   // =========================================================
 
-  if (!open) {
+  if (!isPanelOpen) {
     return null;
   }
 
@@ -387,7 +419,7 @@ export default function CirraPanel({
             content:
               error instanceof Error
                 ? error.message
-                : "Cirra sedang mengalami gangguan.",
+                : (locale === "id" ? "Cirra sedang mengalami gangguan." : "Cirra is currently unavailable."),
           },
         ]
       );
@@ -404,7 +436,7 @@ export default function CirraPanel({
     actionId: string
   ) {
     const prompt =
-      getPrompt(actionId);
+      getPrompt(actionId, locale);
 
     if (!prompt) {
       return;
@@ -571,12 +603,13 @@ export default function CirraPanel({
             <div className="shrink-0 text-center">
 
               <h2 className="text-[21px] font-semibold tracking-tight text-white">
-                What can Cirra help with?
+                {locale === "id" ? "Apa yang bisa dibantu Cirra?" : "What can Cirra help with?"}
               </h2>
 
               <p className="mx-auto mt-1 max-w-[320px] text-[10px] leading-4 text-white/30">
-                Resources, circular economy,
-                environmental impact, and your city.
+                {locale === "id"
+                  ? "Resource, ekonomi sirkular, dampak lingkungan, dan kotamu."
+                  : "Resources, circular economy, environmental impact, and your city."}
               </p>
 
             </div>
@@ -590,7 +623,7 @@ export default function CirraPanel({
               <div className="h-px flex-1 bg-gradient-to-r from-transparent via-emerald-300/25 to-transparent" />
 
               <span className="text-[9px] text-white/20">
-                explore
+                {locale === "id" ? "eksplorasi" : "explore"}
               </span>
 
               <div className="h-px flex-1 bg-gradient-to-r from-transparent via-emerald-300/25 to-transparent" />
@@ -604,33 +637,36 @@ export default function CirraPanel({
             <div className="mt-2 grid grid-cols-2 gap-2.5">
 
               {exploreActions.map(
-                (action) => (
-                  <button
-                    key={action.id}
-                    type="button"
-                    disabled={sending}
-                    onClick={() =>
-                      handleExploreAction(
-                        action.id
-                      )
-                    }
-                    className="group flex min-h-[98px] flex-col items-center justify-center rounded-2xl border border-white/[0.08] bg-white/[0.018] px-3 py-2.5 text-center transition-all duration-300 ease-out hover:-translate-y-1 hover:scale-[1.015] hover:border-emerald-300/20 hover:bg-emerald-300/[0.035] hover:shadow-[0_15px_35px_rgba(52,211,153,0.07)] disabled:pointer-events-none disabled:opacity-40"
-                  >
+                (action) => {
+                  const Icon = action.icon;
+                  return (
+                    <button
+                      key={action.id}
+                      type="button"
+                      disabled={sending}
+                      onClick={() =>
+                        handleExploreAction(
+                          action.id
+                        )
+                      }
+                      className="group flex min-h-[98px] flex-col items-center justify-center rounded-2xl border border-white/[0.08] bg-white/[0.018] px-3 py-2.5 text-center transition-all duration-300 ease-out hover:-translate-y-1 hover:scale-[1.015] hover:border-emerald-300/20 hover:bg-emerald-300/[0.035] hover:shadow-[0_15px_35px_rgba(52,211,153,0.07)] disabled:pointer-events-none disabled:opacity-40"
+                    >
 
-                    <div className="flex h-8.5 w-8.5 items-center justify-center rounded-xl border border-white/[0.07] bg-white/[0.025] text-[16px] transition-all duration-300 group-hover:-translate-y-1.5 group-hover:scale-110 group-hover:border-emerald-300/15 group-hover:bg-emerald-300/[0.06]">
-                      {action.icon}
-                    </div>
+                      <div className="flex h-8.5 w-8.5 items-center justify-center rounded-xl border border-emerald-400/20 bg-emerald-400/[0.04] transition-all duration-300 group-hover:-translate-y-1.5 group-hover:scale-110 group-hover:border-emerald-400/35 group-hover:bg-emerald-400/[0.08]">
+                        <Icon className="h-4 w-4 text-emerald-400 drop-shadow-[0_0_8px_rgba(52,211,153,0.35)] transition-colors duration-300 group-hover:text-emerald-300" />
+                      </div>
 
-                    <p className="mt-1.5 text-[10px] font-semibold leading-4 text-white/75 transition-colors duration-300 group-hover:text-white">
-                      {action.title}
-                    </p>
+                      <p className="mt-1.5 text-[10px] font-semibold leading-4 text-white/75 transition-colors duration-300 group-hover:text-white">
+                        {action.title}
+                      </p>
 
-                    <p className="mt-0.5 line-clamp-2 max-w-[145px] text-[8px] leading-[11px] text-white/22 transition-colors duration-300 group-hover:text-white/38">
-                      {action.description}
-                    </p>
+                      <p className="mt-0.5 line-clamp-2 max-w-[145px] text-[8px] leading-[11px] text-white/22 transition-colors duration-300 group-hover:text-white/38">
+                        {action.description}
+                      </p>
 
-                  </button>
-                )
+                    </button>
+                  );
+                }
               )}
 
             </div>
@@ -670,7 +706,7 @@ export default function CirraPanel({
                       )
                     }
                     disabled={sending}
-                    placeholder="Message Cirra..."
+                    placeholder={locale === "id" ? "Kirim pesan ke Cirra..." : "Message Cirra..."}
                     className="min-w-0 flex-1 bg-transparent px-1 py-2 text-[11px] text-white outline-none placeholder:text-white/22 disabled:opacity-40"
                   />
 
@@ -680,9 +716,9 @@ export default function CirraPanel({
                       !message.trim() ||
                       sending
                     }
-                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-white/[0.045] text-xs text-white/35 transition hover:bg-emerald-300/10 hover:text-emerald-200 disabled:pointer-events-none disabled:opacity-20"
+                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-emerald-400/15 text-emerald-200 transition hover:bg-emerald-400/25 hover:text-white disabled:pointer-events-none disabled:opacity-20"
                   >
-                    ↑
+                    <ArrowUp className="h-3.5 w-3.5" />
                   </button>
 
                 </div>
@@ -837,14 +873,12 @@ export default function CirraPanel({
 
                                           </div>
 
-                                          <span className="shrink-0 text-[11px] text-white/20 transition duration-300 group-hover:translate-x-0.5 group-hover:text-emerald-300">
-                                            →
-                                          </span>
+                                          <ArrowRight className="h-3.5 w-3.5 shrink-0 text-white/20 transition duration-300 group-hover:translate-x-0.5 group-hover:text-emerald-300" />
 
                                         </div>
 
                                         <p className="mt-2 text-[8px] text-white/20 transition-colors group-hover:text-emerald-300/55">
-                                          Lihat resource
+                                          {locale === "id" ? "Lihat resource" : "View resource"}
                                         </p>
 
                                       </button>
@@ -932,7 +966,7 @@ export default function CirraPanel({
                       )
                     }
                     disabled={sending}
-                    placeholder="Message Cirra..."
+                    placeholder={locale === "id" ? "Kirim pesan ke Cirra..." : "Message Cirra..."}
                     className="min-w-0 flex-1 bg-transparent px-1 py-2 text-[11px] text-white outline-none placeholder:text-white/22 disabled:opacity-40"
                   />
 
@@ -942,9 +976,9 @@ export default function CirraPanel({
                       !message.trim() ||
                       sending
                     }
-                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-emerald-300/[0.08] text-xs text-emerald-200 transition hover:bg-emerald-300/[0.14] disabled:pointer-events-none disabled:opacity-20"
+                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-emerald-400/15 text-xs text-emerald-200 transition hover:bg-emerald-400/25 hover:text-white disabled:pointer-events-none disabled:opacity-20"
                   >
-                    ↑
+                    <ArrowUp className="h-3.5 w-3.5" />
                   </button>
 
                 </div>
@@ -968,12 +1002,7 @@ export default function CirraPanel({
 
                   <div className="mx-auto flex h-[58px] w-[58px] items-center justify-center rounded-full border border-emerald-300/10 bg-emerald-300/[0.055]">
 
-                    <span
-                      aria-hidden="true"
-                      className="flex h-full w-full items-center justify-center pb-[1px] text-[30px] leading-none font-medium text-emerald-200/80"
-                    >
-                      ↻
-                    </span>
+                    <RotateCcw className="h-6 w-6 text-emerald-300/80" />
 
                   </div>
 
@@ -982,7 +1011,7 @@ export default function CirraPanel({
                 ================================================= */}
 
                 <h3 className="mt-4 text-[19px] font-semibold tracking-tight text-white">
-                  Start a new chat?
+                  {locale === "id" ? "Mulai chat baru?" : "Start a new chat?"}
                 </h3>
 
                 {/* =================================================
@@ -990,9 +1019,9 @@ export default function CirraPanel({
                 ================================================= */}
 
                 <p className="mx-auto mt-2 max-w-[270px] text-[10px] leading-5 text-white/35">
-                  Percakapan Cirra saat ini akan
-                  dihapus dan kamu akan kembali
-                  ke halaman Explore.
+                  {locale === "id"
+                    ? "Percakapan Cirra saat ini akan dihapus dan kamu akan kembali ke menu eksplorasi."
+                    : "The current Cirra conversation will be cleared and you will return to the explore view."}
                 </p>
 
                 {/* =================================================
@@ -1008,7 +1037,7 @@ export default function CirraPanel({
                     onClick={keepChatting}
                     className="rounded-2xl border border-white/[0.08] bg-white/[0.025] px-3 py-3 text-[10px] font-medium text-white/65 transition-all duration-200 hover:border-white/[0.14] hover:bg-white/[0.05] hover:text-white"
                   >
-                    Keep chatting
+                    {locale === "id" ? "Lanjutkan chat" : "Keep chatting"}
                   </button>
 
                   {/* START NEW CHAT */}
@@ -1018,7 +1047,7 @@ export default function CirraPanel({
                     onClick={clearConversation}
                     className="rounded-2xl border border-emerald-400/20 bg-gradient-to-br from-emerald-700/80 via-emerald-800/70 to-emerald-900/80 px-3 py-3 text-[10px] font-semibold text-emerald-50 shadow-[0_8px_24px_rgba(16,185,129,0.08)] transition-all duration-200 hover:-translate-y-0.5 hover:border-emerald-300/30 hover:from-emerald-600/85 hover:via-emerald-700/80 hover:to-emerald-800/85"
                   >
-                    Start new chat
+                    {locale === "id" ? "Mulai chat baru" : "Start new chat"}
                   </button>
 
                 </div>
@@ -1033,29 +1062,37 @@ export default function CirraPanel({
 }
 
 function getPrompt(
-  actionId: string
+  actionId: string,
+  locale: string = "default"
 ) {
+  const isEn = locale === "en";
   const prompts: Record<
     string,
     string
   > = {
-    classify:
-      "Cirra, bantu saya mengidentifikasi dan mengklasifikasikan material.",
+    classify: isEn
+      ? "Cirra, help me identify and classify this material."
+      : "Cirra, bantu saya mengidentifikasi dan mengklasifikasikan material.",
 
-    price:
-      "Cirra, bantu saya memperkirakan harga resource berdasarkan kondisi, jumlah, lokasi, dan data yang tersedia di ARVENA.",
+    price: isEn
+      ? "Cirra, help me estimate resource pricing based on condition, quantity, and market data in ARVENA."
+      : "Cirra, bantu saya memperkirakan harga resource berdasarkan kondisi, jumlah, lokasi, dan data yang tersedia di ARVENA.",
 
-    resources:
-      "Cirra, bantu saya menemukan resource yang sesuai dengan kebutuhan saya di ekosistem ARVENA.",
+    resources: isEn
+      ? "Cirra, help me find resources matching my needs in the ARVENA ecosystem."
+      : "Cirra, bantu saya menemukan resource yang sesuai dengan kebutuhan saya di ekosistem ARVENA.",
 
-    impact:
-      "Cirra, bantu saya menghitung potensi dampak lingkungan dari aktivitas saya.",
+    impact: isEn
+      ? "Cirra, help me calculate the environmental impact of my circular activities."
+      : "Cirra, bantu saya menghitung potensi dampak lingkungan dari aktivitas saya.",
 
-    route:
-      "Cirra, bantu saya menghitung jarak perjalanan dan estimasi emisi berdasarkan rute dan transportasi.",
+    route: isEn
+      ? "Cirra, help me calculate travel distance and transport emissions based on routes."
+      : "Cirra, bantu saya menghitung jarak perjalanan dan estimasi emisi berdasarkan rute dan transportasi.",
 
-    city:
-      "Cirra, bantu saya menemukan insight resource dan aktivitas circular economy berdasarkan lokasi saya.",
+    city: isEn
+      ? "Cirra, help me find resource insights and circular economy activities for my city."
+      : "Cirra, bantu saya menemukan insight resource dan aktivitas circular economy berdasarkan lokasi saya.",
   };
 
   return prompts[actionId] ?? "";

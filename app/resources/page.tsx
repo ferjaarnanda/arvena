@@ -1,14 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
+import { Camera, Package, ArrowRight, Plus } from "lucide-react";
 
 type Resource = {
   id: string;
   owner_id: string;
   title: string;
   category: string;
+  custom_category?: string | null;
   quantity: number;
   unit: string;
   city: string | null;
@@ -20,56 +22,46 @@ type Resource = {
 };
 
 export default function ResourcesPage() {
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
 
   const [resources, setResources] = useState<Resource[]>([]);
   const [userId, setUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  async function loadResources() {
-    setLoading(true);
-
-    // =========================
-    // CEK USER
-    // =========================
-
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    setUserId(user?.id ?? null);
-
-    // =========================
-    // AMBIL RESOURCE
-    // =========================
-
-    const { data, error } = await supabase
-      .from("resources")
-      .select(
-        "id, owner_id, title, category, quantity, unit, city, description, status, price, negotiation_percent, images"
-      )
-      .eq("status", "available")
-      .order("created_at", { ascending: false });
-
-   if (error) {
-  console.error("RESOURCE ERROR:", {
-    message: error.message,
-    details: error.details,
-    hint: error.hint,
-    code: error.code,
-  });
-
-  setLoading(false);
-  return;
-}
-
-    setResources((data as Resource[]) || []);
-    setLoading(false);
-  }
-
   useEffect(() => {
+    async function loadResources() {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      setUserId(user?.id ?? null);
+
+      const { data, error } = await supabase
+        .from("resources")
+        .select(
+          "id, owner_id, title, category, custom_category, quantity, unit, city, description, status, price, negotiation_percent, images"
+        )
+        .eq("status", "available")
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        console.error("RESOURCE ERROR:", {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code,
+        });
+
+        setLoading(false);
+        return;
+      }
+
+      setResources((data as Resource[]) || []);
+      setLoading(false);
+    }
+
     loadResources();
-  }, []);
+  }, [supabase]);
 
   return (
     <main className="min-h-screen bg-[#07130f] px-6 py-12 text-white">
@@ -97,9 +89,10 @@ export default function ResourcesPage() {
 
           <Link
             href="/resources/new"
-            className="inline-flex items-center justify-center rounded-xl bg-emerald-300 px-5 py-3 font-semibold text-[#07130f] transition-all duration-300 hover:-translate-y-1 hover:bg-emerald-200 hover:shadow-lg hover:shadow-emerald-300/10"
+            className="inline-flex items-center gap-2 justify-center rounded-xl bg-[#2A835F] border border-[#12544F] px-5 py-3 text-sm font-semibold text-white transition-all duration-300 hover:-translate-y-1 hover:bg-[#32a070] shadow-[0_4px_16px_rgba(42,131,95,0.3)]"
           >
-            + Add Resource
+            <Plus className="h-4 w-4" />
+            <span>Add Resource</span>
           </Link>
         </div>
 
@@ -136,8 +129,9 @@ export default function ResourcesPage() {
 
               <Link
                 href="/resources/new"
-                className="mt-6 inline-flex rounded-xl bg-emerald-300 px-5 py-3 font-semibold text-[#07130f] transition hover:-translate-y-1"
+                className="mt-6 inline-flex items-center gap-2 rounded-xl bg-[#2A835F] border border-[#12544F] px-5 py-3 text-sm font-semibold text-white transition hover:-translate-y-1"
               >
+                <Plus className="h-4 w-4" />
                 Add your first resource
               </Link>
             </div>
@@ -183,9 +177,9 @@ export default function ResourcesPage() {
                           />
 
                           {/* PHOTO COUNT */}
-
-                          <div className="absolute bottom-3 right-3 rounded-full border border-white/10 bg-black/60 px-3 py-1 text-xs text-white backdrop-blur">
-                            📷 {imageCount}
+                          <div className="absolute bottom-3 right-3 flex items-center gap-1.5 rounded-full border border-white/10 bg-black/60 px-3 py-1 text-xs text-white backdrop-blur">
+                            <Camera className="h-3.5 w-3.5 text-emerald-300" />
+                            <span>{imageCount}</span>
                           </div>
                         </div>
                       </Link>
@@ -193,8 +187,8 @@ export default function ResourcesPage() {
                       <Link href={`/resources/${resource.id}`}>
                         <div className="flex h-52 items-center justify-center border-b border-white/10 bg-white/[0.02]">
                           <div className="text-center">
-                            <div className="text-4xl opacity-30">
-                              📦
+                            <div className="flex justify-center opacity-30">
+                              <Package className="h-10 w-10 text-emerald-300" />
                             </div>
 
                             <p className="mt-2 text-xs text-white/30">
@@ -215,7 +209,9 @@ export default function ResourcesPage() {
 
                       <div className="flex items-center justify-between">
                         <span className="rounded-full border border-emerald-300/20 bg-emerald-300/10 px-3 py-1 text-xs font-medium capitalize text-emerald-300">
-                          {resource.category}
+                          {resource.category === "other" && resource.custom_category
+                            ? resource.custom_category
+                            : resource.category}
                         </span>
 
                         <span className="text-xs text-white/30">
@@ -229,18 +225,16 @@ export default function ResourcesPage() {
                         href={`/resources/${resource.id}`}
                         className="mt-5 flex items-center gap-2 text-xl font-semibold transition-colors duration-300 hover:text-emerald-200"
                       >
-                        <span>
+                        <span className="truncate">
                           {resource.title}
                         </span>
 
-                        <span className="text-sm text-white/30 transition group-hover:translate-x-1 group-hover:text-emerald-300">
-                          →
-                        </span>
+                        <ArrowRight className="h-4 w-4 shrink-0 text-white/30 transition group-hover:translate-x-1 group-hover:text-emerald-300" />
                       </Link>
 
                       {/* DESCRIPTION */}
 
-                      <p className="mt-3 min-h-[48px] text-sm leading-6 text-white/40">
+                      <p className="mt-3 min-h-[48px] line-clamp-2 text-sm leading-6 text-white/40">
                         {resource.description ||
                           "Tidak ada deskripsi resource."}
                       </p>
@@ -274,8 +268,9 @@ export default function ResourcesPage() {
                             Photos
                           </p>
 
-                          <p className="mt-1 text-sm font-medium">
-                            📷 {imageCount}
+                          <p className="mt-1 flex items-center gap-1 text-sm font-medium">
+                            <Camera className="h-3.5 w-3.5 text-white/40" />
+                            <span>{imageCount}</span>
                           </p>
                         </div>
 

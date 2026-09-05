@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 :root {
-  --background: #07130f;
+  --background: #092328;
   --foreground: #ffffff;
 }
 
@@ -9,8 +9,10 @@
   box-sizing: border-box;
 }
 
-html {
-  scroll-behavior: smooth;
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
 }
 
 body {

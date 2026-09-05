@@ -10,6 +10,21 @@ import {
   useState,
   useRef,
 } from "react";
+import {
+  Bike,
+  Car,
+  Truck,
+  Footprints,
+  MapPin,
+  Navigation,
+  Activity,
+  Leaf,
+  Compass,
+  Search,
+  ArrowRight,
+  Sparkles,
+} from "lucide-react";
+import { useLanguage } from "@/lib/i18n/context";
 
 type Coordinate = [
   number,
@@ -29,9 +44,6 @@ type TransportCategory =
   | "motor"
   | "mobil"
   | "kendaraan-besar"
-  | "kereta"
-  | "pesawat"
-  | "kapal"
   | "jalan-kaki";
 
 type TransportType =
@@ -46,14 +58,6 @@ type TransportType =
   | "truk-electric"
   | "bus-diesel"
   | "bus-electric"
-  | "kereta-diesel"
-  | "kereta-electric"
-  | "pesawat-domestik"
-  | "pesawat-internasional"
-  | "ferry"
-  | "speedboat"
-  | "kapal-diesel"
-  | "kapal-electric"
   | "jalan-kaki";
 
 type RouteResult = {
@@ -99,13 +103,13 @@ const ImpactMap = dynamic(
 const transportCategories: {
   id: TransportCategory;
   label: string;
-  icon: string;
+  icon: typeof Bike;
   description: string;
 }[] = [
   {
     id: "motor",
     label: "Motor",
-    icon: "🏍",
+    icon: Bike,
     description:
       "Sepeda motor dan kendaraan roda dua.",
   },
@@ -113,7 +117,7 @@ const transportCategories: {
   {
     id: "mobil",
     label: "Mobil",
-    icon: "🚗",
+    icon: Car,
     description:
       "Kendaraan penumpang pribadi.",
   },
@@ -121,41 +125,17 @@ const transportCategories: {
   {
     id: "kendaraan-besar",
     label: "Kendaraan besar",
-    icon: "🚛",
+    icon: Truck,
     description:
-      "Truk dan bus.",
-  },
-
-  {
-    id: "kereta",
-    label: "Kereta",
-    icon: "🚆",
-    description:
-      "Perjalanan menggunakan kereta api.",
-  },
-
-  {
-    id: "pesawat",
-    label: "Pesawat",
-    icon: "✈️",
-    description:
-      "Perjalanan udara.",
-  },
-
-  {
-    id: "kapal",
-    label: "Kapal",
-    icon: "🚢",
-    description:
-      "Ferry, speedboat, dan kapal lainnya.",
+      "Truk dan van angkutan barang.",
   },
 
   {
     id: "jalan-kaki",
     label: "Jalan kaki",
-    icon: "🚶",
+    icon: Footprints,
     description:
-      "Perjalanan tanpa kendaraan bermotor.",
+      "Perjalanan tanpa kendaraan bermotor (zero emission).",
   },
 ];
 
@@ -285,92 +265,6 @@ const transportDetails: Record<
     },
   ],
 
-  kereta: [
-    {
-      id: "kereta-electric",
-      label: "Kereta electric",
-      description:
-        "Kereta listrik.",
-      emissionFactorKgPerKm:
-        0.04,
-      routeSupported: false,
-    },
-
-    {
-      id: "kereta-diesel",
-      label: "Kereta diesel",
-      description:
-        "Kereta dengan tenaga diesel.",
-      emissionFactorKgPerKm:
-        0.09,
-      routeSupported: false,
-    },
-  ],
-
-  pesawat: [
-    {
-      id: "pesawat-domestik",
-      label: "Pesawat domestik",
-      description:
-        "Penerbangan dalam negeri.",
-      emissionFactorKgPerKm:
-        0.255,
-      routeSupported: false,
-    },
-
-    {
-      id: "pesawat-internasional",
-      label: "Pesawat internasional",
-      description:
-        "Penerbangan internasional.",
-      emissionFactorKgPerKm:
-        0.195,
-      routeSupported: false,
-    },
-  ],
-
-  kapal: [
-    {
-      id: "ferry",
-      label: "Ferry",
-      description:
-        "Kapal ferry untuk penyeberangan.",
-      emissionFactorKgPerKm:
-        0.18,
-      routeSupported: false,
-    },
-
-    {
-      id: "speedboat",
-      label: "Speedboat",
-      description:
-        "Speedboat atau kapal cepat.",
-      emissionFactorKgPerKm:
-        0.25,
-      routeSupported: false,
-    },
-
-    {
-      id: "kapal-diesel",
-      label: "Kapal diesel",
-      description:
-        "Kapal bermesin diesel.",
-      emissionFactorKgPerKm:
-        0.22,
-      routeSupported: false,
-    },
-
-    {
-      id: "kapal-electric",
-      label: "Kapal electric",
-      description:
-        "Kapal listrik.",
-      emissionFactorKgPerKm:
-        0.08,
-      routeSupported: false,
-    },
-  ],
-
   "jalan-kaki": [
     {
       id: "jalan-kaki",
@@ -389,6 +283,64 @@ const transportDetails: Record<
    ========================================================= */
 
 export default function ImpactPage() {
+  const { locale, t } = useLanguage();
+
+  function getCategoryLabel(id: TransportCategory) {
+    switch (id) {
+      case "motor": return t.impact.transport.motor;
+      case "mobil": return t.impact.transport.mobil;
+      case "kendaraan-besar": return t.impact.transport.kendaraanBesar;
+      case "jalan-kaki": return t.impact.transport.jalanKaki;
+      default: return id;
+    }
+  }
+
+  function getCategoryDescription(id: TransportCategory) {
+    switch (id) {
+      case "motor": return t.impact.transport.motorDesc;
+      case "mobil": return t.impact.transport.mobilDesc;
+      case "kendaraan-besar": return t.impact.transport.kendaraanBesarDesc;
+      case "jalan-kaki": return t.impact.transport.jalanKakiDesc;
+      default: return "";
+    }
+  }
+
+  function getDetailLabel(id: TransportType) {
+    switch (id) {
+      case "motor-bensin": return t.impact.transport.motorBensin;
+      case "motor-diesel": return t.impact.transport.motorDiesel;
+      case "motor-electric": return t.impact.transport.motorElectric;
+      case "mobil-bensin": return t.impact.transport.mobilBensin;
+      case "mobil-diesel": return t.impact.transport.mobilDiesel;
+      case "mobil-hybrid": return t.impact.transport.mobilHybrid;
+      case "mobil-electric": return t.impact.transport.mobilElectric;
+      case "truk-diesel": return t.impact.transport.trukDiesel;
+      case "truk-electric": return t.impact.transport.trukElectric;
+      case "bus-diesel": return t.impact.transport.busDiesel;
+      case "bus-electric": return t.impact.transport.busElectric;
+      case "jalan-kaki": return t.impact.transport.jalanKakiDetail;
+      default: return id;
+    }
+  }
+
+  function getDetailDescription(id: TransportType) {
+    switch (id) {
+      case "motor-bensin": return t.impact.transport.motorBensinDesc;
+      case "motor-diesel": return t.impact.transport.motorDieselDesc;
+      case "motor-electric": return t.impact.transport.motorElectricDesc;
+      case "mobil-bensin": return t.impact.transport.mobilBensinDesc;
+      case "mobil-diesel": return t.impact.transport.mobilDieselDesc;
+      case "mobil-hybrid": return t.impact.transport.mobilHybridDesc;
+      case "mobil-electric": return t.impact.transport.mobilElectricDesc;
+      case "truk-diesel": return t.impact.transport.trukDieselDesc;
+      case "truk-electric": return t.impact.transport.trukElectricDesc;
+      case "bus-diesel": return t.impact.transport.busDieselDesc;
+      case "bus-electric": return t.impact.transport.busElectricDesc;
+      case "jalan-kaki": return t.impact.transport.jalanKakiDetailDesc;
+      default: return "";
+    }
+  }
+
   const [origin, setOrigin] =
     useState<LocationResult | null>(
       null
@@ -547,52 +499,6 @@ export default function ImpactPage() {
     estimatedKg * 1000;
 
   /* =======================================================
-     SEARCH ORIGIN
-     ======================================================= */
-
-  useEffect(() => {
-    const query =
-      originQuery.trim();
-
-    if (query.length < 3 || origin) {
-      if (query.length < 3) {
-        setOriginSuggestions([]);
-        setNoOriginResults(false);
-      }
-      return;
-    }
-
-    const timer = window.setTimeout(() => {
-      void searchLocations("origin", query);
-    }, 450);
-
-    return () => window.clearTimeout(timer);
-  }, [originQuery, origin]);
-
-  /* =======================================================
-     SEARCH DESTINATION
-     ======================================================= */
-
-  useEffect(() => {
-    const query =
-      destinationQuery.trim();
-
-    if (query.length < 3 || destination) {
-      if (query.length < 3) {
-        setDestinationSuggestions([]);
-        setNoDestinationResults(false);
-      }
-      return;
-    }
-
-    const timer = window.setTimeout(() => {
-      void searchLocations("destination", query);
-    }, 450);
-
-    return () => window.clearTimeout(timer);
-  }, [destinationQuery, destination]);
-
-  /* =======================================================
      SEARCH FUNCTION
      ======================================================= */
 
@@ -708,6 +614,50 @@ export default function ImpactPage() {
       }
     }
   }
+
+  /* =======================================================
+     SEARCH ORIGIN
+     ======================================================= */
+
+  useEffect(() => {
+    const query =
+      originQuery.trim();
+
+    const timer = window.setTimeout(() => {
+      if (query.length < 3 || origin) {
+        if (query.length < 3) {
+          setOriginSuggestions([]);
+          setNoOriginResults(false);
+        }
+        return;
+      }
+      void searchLocations("origin", query);
+    }, 450);
+
+    return () => window.clearTimeout(timer);
+  }, [originQuery, origin]);
+
+  /* =======================================================
+     SEARCH DESTINATION
+     ======================================================= */
+
+  useEffect(() => {
+    const query =
+      destinationQuery.trim();
+
+    const timer = window.setTimeout(() => {
+      if (query.length < 3 || destination) {
+        if (query.length < 3) {
+          setDestinationSuggestions([]);
+          setNoDestinationResults(false);
+        }
+        return;
+      }
+      void searchLocations("destination", query);
+    }, 450);
+
+    return () => window.clearTimeout(timer);
+  }, [destinationQuery, destination]);
 
   /* =======================================================
      SELECT LOCATION
@@ -1067,7 +1017,7 @@ export default function ImpactPage() {
       ) {
         throw new Error(
           data?.error ??
-            "Rute gagal dihitung."
+            (locale === "en" ? "Failed to calculate route." : "Rute gagal dihitung.")
         );
       }
 
@@ -1101,7 +1051,7 @@ export default function ImpactPage() {
         routeError instanceof
           Error
           ? routeError.message
-          : "Rute gagal dihitung."
+          : (locale === "en" ? "Failed to calculate route." : "Rute gagal dihitung.")
       );
     } finally {
       setLoadingRoute(
@@ -1195,7 +1145,7 @@ export default function ImpactPage() {
     }
 
     return new Intl.NumberFormat(
-      "id-ID",
+      locale === "en" ? "en-US" : "id-ID",
       {
         maximumFractionDigits,
       }
@@ -1209,7 +1159,7 @@ export default function ImpactPage() {
      ======================================================= */
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-[#06120e] text-white">
+    <main className="relative min-h-screen overflow-hidden bg-[#092328] text-white">
 
       {/* BACKGROUND */}
 
@@ -1227,53 +1177,28 @@ export default function ImpactPage() {
 
         <Link
           href="/dashboard"
-          className="inline-flex items-center gap-2 text-xs text-white/30 transition hover:text-emerald-200"
+          className="inline-flex items-center gap-2 text-xs text-white/40 transition hover:text-emerald-200"
         >
-          ← Back to Dashboard
+          {locale === "en" ? "← Back to Dashboard" : "← Kembali ke Dashboard"}
         </Link>
 
         {/* HEADER */}
 
         <div className="mt-8 max-w-3xl">
 
-          <div className="flex items-center gap-3">
-
-            <div className="flex h-11 w-11 items-center justify-center overflow-hidden">
-
-              <Image
-                src="/arvena-marks.png"
-                alt="ARVENA"
-                width={52}
-                height={52}
-                className="h-10 w-10 object-contain"
-              />
-
-            </div>
-
-            <div>
-
-              <p className="text-[9px] uppercase tracking-[0.22em] text-emerald-300/60">
-                ARVENA IMPACT
-              </p>
-
-              <p className="mt-0.5 text-xs text-white/25">
-                GIS & Environmental Intelligence
-              </p>
-
-            </div>
-
+          <div className="inline-flex items-center gap-2 rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3.5 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-emerald-300">
+            <Activity className="h-3.5 w-3.5" />
+            <span>ARVENA IMPACT</span>
           </div>
 
           <h1 className="mt-6 text-3xl font-semibold tracking-tight sm:text-5xl">
-            Route & Emissions
+            {locale === "en" ? "Route & Emissions" : "Rute & Emisi"}
           </h1>
 
-          <p className="mt-4 max-w-2xl text-sm leading-6 text-white/35">
-            Tentukan titik awal dan
-            titik tujuan, pilih moda
-            transportasi, lalu biarkan
-            ARVENA menghitung rute dan
-            estimasi dampaknya.
+          <p className="mt-4 max-w-2xl text-sm leading-6 text-white/45">
+            {locale === "en"
+              ? "Set origin and destination points, choose transportation mode, and let ARVENA compute optimal routing and estimated environmental impact."
+              : "Tentukan titik awal dan titik tujuan, pilih moda transportasi, lalu biarkan ARVENA menghitung rute dan estimasi dampaknya."}
           </p>
 
         </div>
@@ -1292,11 +1217,16 @@ export default function ImpactPage() {
             {/* TITIK AWAL */}
 
             <LocationInput
-              label="Titik Awal"
+              label={t.impact.origin}
+              locale={locale}
               value={
                 originQuery
               }
-              placeholder="Cari Kos Pak Frans, UNDIP, KFC Tirtoagung..."
+              placeholder={
+                locale === "en"
+                  ? "Search origin, e.g. Warehouse, Faculty of Engineering, Jl. Pahlawan..."
+                  : "Cari Kos Pak Frans, UNDIP, KFC Tirtoagung..."
+              }
               active={
                 activeTarget ===
                 "origin"
@@ -1345,11 +1275,16 @@ export default function ImpactPage() {
             {/* TITIK TUJUAN */}
 
             <LocationInput
-              label="Titik Tujuan"
+              label={t.impact.destination}
+              locale={locale}
               value={
                 destinationQuery
               }
-              placeholder="Cari Burjo Idaman, KFC, Tembalang..."
+              placeholder={
+                locale === "en"
+                  ? "Search destination, e.g. Central Recycling Hub, Tembalang..."
+                  : "Cari Burjo Idaman, KFC, Tembalang..."
+              }
               active={
                 activeTarget ===
                 "destination"
@@ -1402,7 +1337,8 @@ export default function ImpactPage() {
           <div className="mt-5 grid gap-3 md:grid-cols-2">
 
             <SelectedLocation
-              label="Titik awal dipilih"
+              label={t.impact.originSelected}
+              locale={locale}
               location={
                 origin
               }
@@ -1418,7 +1354,8 @@ export default function ImpactPage() {
             />
 
             <SelectedLocation
-              label="Titik tujuan dipilih"
+              label={t.impact.destinationSelected}
+              locale={locale}
               location={
                 destination
               }
@@ -1444,13 +1381,13 @@ export default function ImpactPage() {
               <div>
 
                 <p className="text-xs font-medium text-white/60">
-                  Moda transportasi
+                  {t.impact.chooseTransport}
                 </p>
 
-                <p className="mt-1 text-[10px] leading-5 text-white/25">
-                  Pilih kategori terlebih
-                  dahulu, lalu tentukan
-                  jenis kendaraan.
+                <p className="mt-1 text-[10px] leading-5 text-white/40">
+                  {locale === "en"
+                    ? "Choose category first, then select vehicle type."
+                    : "Pilih kategori terlebih dahulu, lalu tentukan jenis kendaraan."}
                 </p>
 
               </div>
@@ -1465,11 +1402,11 @@ export default function ImpactPage() {
                       !current
                   )
                 }
-                className="text-[10px] text-white/30 transition hover:text-emerald-200"
+                className="text-[10px] text-white/40 transition hover:text-emerald-200"
               >
                 {transportOpen
-                  ? "Sembunyikan"
-                  : "Tampilkan"}
+                  ? (locale === "en" ? "Hide" : "Sembunyikan")
+                  : (locale === "en" ? "Show" : "Tampilkan")}
               </button>
 
             </div>
@@ -1477,7 +1414,7 @@ export default function ImpactPage() {
             {transportOpen && (
               <>
 
-                {/* CATEGORY */}
+                {/* CATEGORY - PREDOMINANTLY WHITE / OFF-WHITE CARDS WITH DARK TEXT */}
 
                 <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
 
@@ -1488,6 +1425,7 @@ export default function ImpactPage() {
                       const selected =
                         transportCategory ===
                         category.id;
+                      const Icon = category.icon;
 
                       return (
                         <button
@@ -1502,44 +1440,54 @@ export default function ImpactPage() {
                           }
                           className={`rounded-2xl border p-4 text-left transition-all ${
                             selected
-                              ? "border-emerald-300/25 bg-emerald-300/[0.05]"
-                              : "border-white/[0.08] bg-white/[0.018] hover:border-white/[0.14] hover:bg-white/[0.03]"
+                              ? "bg-white text-slate-900 border-2 border-emerald-600 ring-2 ring-emerald-500/20 shadow-md"
+                              : "bg-white/95 hover:bg-white text-slate-800 border-slate-200/90 shadow-sm hover:border-slate-300"
                           }`}
                         >
 
                           <div className="flex items-center justify-between">
 
-                            <span className="text-xl">
-                              {
-                                category.icon
-                              }
-                            </span>
+                            <div
+                              className={`flex h-9 w-9 items-center justify-center rounded-xl border ${
+                                selected
+                                  ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                                  : "border-slate-200 bg-slate-100 text-slate-600"
+                              }`}
+                            >
+                              <Icon className="h-4 w-4" />
+                            </div>
 
                             <span
-                              className={`h-2 w-2 rounded-full ${
+                              className={`h-2.5 w-2.5 rounded-full ${
                                 selected
-                                  ? "bg-emerald-300 shadow-[0_0_10px_rgba(110,231,183,0.65)]"
-                                  : "bg-white/10"
+                                  ? "bg-emerald-600 shadow-[0_0_8px_rgba(5,150,105,0.4)]"
+                                  : "bg-slate-300"
                               }`}
                             />
 
                           </div>
 
                           <p
-                            className={`mt-3 text-sm font-medium ${
+                            className={`mt-3 text-sm font-semibold ${
                               selected
-                                ? "text-emerald-200"
-                                : "text-white/65"
+                                ? "text-slate-950"
+                                : "text-slate-800"
                             }`}
                           >
                             {
-                              category.label
+                              getCategoryLabel(category.id)
                             }
                           </p>
 
-                          <p className="mt-1 text-[10px] leading-5 text-white/25">
+                          <p
+                            className={`mt-1 text-[11px] leading-relaxed ${
+                              selected
+                                ? "text-slate-600 font-medium"
+                                : "text-slate-500"
+                            }`}
+                          >
                             {
-                              category.description
+                              getCategoryDescription(category.id)
                             }
                           </p>
 
@@ -1552,26 +1500,18 @@ export default function ImpactPage() {
 
                 {/* DETAIL */}
 
-                <div className="mt-4 rounded-2xl border border-white/[0.07] bg-black/10 p-4">
+                <div className="mt-4 rounded-2xl border border-white/[0.09] bg-[#071d21]/70 p-4">
 
                   <div className="mb-3 flex items-center justify-between">
 
                     <div>
 
-                      <p className="text-[9px] uppercase tracking-[0.16em] text-white/20">
-                        Jenis kendaraan
+                      <p className="text-[9px] uppercase tracking-[0.16em] text-white/35">
+                        {locale === "en" ? "Vehicle type" : "Jenis kendaraan"}
                       </p>
 
-                      <p className="mt-1 text-xs text-white/40">
-                        {
-                          transportCategories.find(
-                            (
-                              item
-                            ) =>
-                              item.id ===
-                              transportCategory
-                          )?.label
-                        }
+                      <p className="mt-1 text-xs font-semibold text-emerald-300">
+                        {getCategoryLabel(transportCategory)}
                       </p>
 
                     </div>
@@ -1611,8 +1551,8 @@ export default function ImpactPage() {
                             }}
                             className={`rounded-xl border px-3 py-3 text-left transition ${
                               selected
-                                ? "border-emerald-300/20 bg-emerald-300/[0.045]"
-                                : "border-white/[0.06] bg-white/[0.012] hover:border-white/[0.12]"
+                                ? "border-emerald-400/60 bg-emerald-950/40 ring-1 ring-emerald-400/30"
+                                : "border-white/[0.08] bg-white/[0.025] hover:border-white/[0.16] hover:bg-white/[0.05]"
                             }`}
                           >
 
@@ -1621,29 +1561,31 @@ export default function ImpactPage() {
                               <p
                                 className={`text-xs font-medium ${
                                   selected
-                                    ? "text-emerald-200"
-                                    : "text-white/55"
+                                    ? "text-emerald-200 font-semibold"
+                                    : "text-white/70"
                                 }`}
                               >
-                                {
-                                  option.label
-                                }
+                                {getDetailLabel(option.id)}
                               </p>
 
                               <span
                                 className={`h-1.5 w-1.5 rounded-full ${
                                   selected
-                                    ? "bg-emerald-300"
-                                    : "bg-white/10"
+                                    ? "bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.5)]"
+                                    : "bg-white/20"
                                 }`}
                               />
 
                             </div>
 
-                            <p className="mt-1 text-[9px] leading-4 text-white/20">
-                              {
-                                option.description
-                              }
+                            <p
+                              className={`mt-1 text-[9px] leading-4 ${
+                                selected
+                                  ? "text-emerald-100/70"
+                                  : "text-white/35"
+                              }`}
+                            >
+                              {getDetailDescription(option.id)}
                             </p>
 
                           </button>
@@ -1667,15 +1609,15 @@ export default function ImpactPage() {
             <div>
 
               <p className="text-[10px] text-white/25">
-                Pilih titik langsung dari
-                pencarian atau klik peta.
+                {locale === "en"
+                  ? "Select points directly from search or click on the map."
+                  : "Pilih titik langsung dari pencarian atau klik peta."}
               </p>
 
               <p className="mt-1 text-[9px] text-white/15">
-                Transportasi non-jalan
-                akan kita sambungkan ke
-                routing engine multimoda
-                pada tahap berikutnya.
+                {locale === "en"
+                  ? "Non-road modes will connect to multimodal routing in the next phase."
+                  : "Transportasi non-jalan akan kita sambungkan ke routing engine multimoda pada tahap berikutnya."}
               </p>
 
             </div>
@@ -1689,13 +1631,13 @@ export default function ImpactPage() {
                 !selectedTransport
                   .routeSupported
               }
-              className="rounded-2xl bg-emerald-300 px-7 py-3.5 text-sm font-semibold text-[#06120e] transition hover:-translate-y-0.5 hover:bg-emerald-200 disabled:cursor-not-allowed disabled:opacity-35"
+              className="rounded-2xl bg-[#2A835F] border border-[#12544F] px-7 py-3.5 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-[#349e73] disabled:cursor-not-allowed disabled:opacity-35"
             >
               {loadingRoute
-                ? "Calculating..."
+                ? locale === "en" ? "Calculating..." : "Menghitung..."
                 : selectedTransport.routeSupported
-                ? "Calculate Route"
-                : "Routing Soon"}
+                ? locale === "en" ? "Calculate Route" : "Hitung Rute & Emisi"
+                : locale === "en" ? "Routing Soon" : "Segera Hadir"}
             </button>
 
           </div>
@@ -1727,17 +1669,15 @@ export default function ImpactPage() {
               </p>
 
               <h2 className="mt-1 text-lg font-medium text-white/75">
-                Pilih titik pada peta
+                {locale === "en" ? "Select point on map" : "Pilih titik pada peta"}
               </h2>
 
             </div>
 
             <p className="text-[10px] text-white/20">
-              Klik peta untuk menaruh{" "}
-              {activeTarget ===
-              "origin"
-                ? "titik awal"
-                : "titik tujuan"}.
+              {locale === "en"
+                ? `Click map to place ${activeTarget === "origin" ? "origin point" : "destination point"}.`
+                : `Klik peta untuk menaruh ${activeTarget === "origin" ? "titik awal" : "titik tujuan"}.`}
             </p>
 
           </div>
@@ -1768,12 +1708,12 @@ export default function ImpactPage() {
 
             originLabel={
               origin?.label ??
-              "Titik Awal"
+              (locale === "en" ? "Origin" : "Titik Awal")
             }
 
             destinationLabel={
               destination?.label ??
-              "Titik Tujuan"
+              (locale === "en" ? "Destination" : "Titik Tujuan")
             }
 
             activeTarget={
@@ -1800,7 +1740,7 @@ export default function ImpactPage() {
         <section className="mt-6 grid gap-4 md:grid-cols-3">
 
           <ResultCard
-            label="Distance"
+            label={t.impact.distanceLabel || "Distance"}
             value={
               route
                 ? formatNumber(
@@ -1809,11 +1749,11 @@ export default function ImpactPage() {
                 : "—"
             }
             suffix="km"
-            description="Jarak berdasarkan rute jaringan jalan."
+            description={t.impact.distanceDesc || "Distance based on the road network route."}
           />
 
           <ResultCard
-            label="Travel time"
+            label={t.impact.travelTimeLabel || "Travel time"}
             value={
               route
                 ? formatNumber(
@@ -1823,11 +1763,11 @@ export default function ImpactPage() {
                 : "—"
             }
             suffix="min"
-            description="Estimasi waktu perjalanan dari routing engine."
+            description={t.impact.travelTimeDesc || "Estimated travel time from the routing engine."}
           />
 
           <ResultCard
-            label="Estimated CO₂"
+            label={t.impact.estimatedCO2Label || "Estimated CO₂"}
             value={
               route
                 ? formatNumber(
@@ -1837,7 +1777,7 @@ export default function ImpactPage() {
                 : "—"
             }
             suffix="g"
-            description={`Estimasi berdasarkan ${selectedTransport.label.toLowerCase()}.`}
+            description={`${t.impact.estimatedCO2Desc || "Estimated based on"} ${getDetailLabel(selectedTransport.id).toLowerCase()}.`}
             green
           />
 
@@ -1852,22 +1792,22 @@ export default function ImpactPage() {
             <div className="max-w-2xl">
 
               <p className="text-[9px] uppercase tracking-[0.18em] text-white/20">
-                Current route
+                {t.impact.currentRouteLabel || "Current route"}
               </p>
 
               <h2 className="mt-2 text-xl font-medium text-white/80">
                 {origin &&
                 destination
                   ? `${origin.label} → ${destination.label}`
-                  : "Belum ada rute yang dipilih"}
+                  : (t.impact.noRouteSelected || "Belum ada rute yang dipilih")}
               </h2>
 
-              <p className="mt-3 text-xs leading-6 text-white/25">
+              <p className="mt-3 text-xs leading-6 text-white/35">
 
                 {origin &&
                 destination
-                  ? `Menggunakan ${selectedTransport.label}. ${selectedTransport.description}`
-                  : "Pilih titik awal dan titik tujuan untuk melihat ringkasan rute."}
+                  ? `${t.impact.using || "Menggunakan"} ${getDetailLabel(selectedTransport.id)}. ${getDetailDescription(selectedTransport.id)}`
+                  : (t.impact.selectPointsHint || "Pilih titik awal dan titik tujuan untuk melihat ringkasan rute.")}
 
               </p>
 
@@ -1877,15 +1817,15 @@ export default function ImpactPage() {
               <div className="rounded-2xl border border-emerald-300/10 bg-emerald-300/[0.025] px-5 py-4 lg:min-w-[230px]">
 
                 <p className="text-[9px] uppercase tracking-[0.16em] text-emerald-300/55">
-                  Route status
+                  {t.impact.routeStatusLabel || "Route status"}
                 </p>
 
                 <p className="mt-2 text-sm font-medium text-emerald-200">
-                  Route calculated
+                  {t.impact.routeCalculated || "Route calculated"}
                 </p>
 
-                <p className="mt-1 text-[10px] text-white/25">
-                  Fastest available road route
+                <p className="mt-1 text-[10px] text-white/35">
+                  {t.impact.fastestRoute || "Fastest available road route"}
                 </p>
 
               </div>
@@ -1895,36 +1835,16 @@ export default function ImpactPage() {
 
         </section>
 
-        {/* NOTE */}
+        {/* COMPACT PROFESSIONAL DISCLAIMER */}
 
-        <div className="mt-6 max-w-3xl text-[10px] leading-5 text-white/18">
+        <div className="mt-4 max-w-3xl space-y-1.5 text-[10px] leading-relaxed text-white/25">
 
           <p>
-            Pencarian lokasi menggunakan
-            Geoapify dengan data
-            OpenStreetMap. Routing jalan
-            menggunakan OpenRouteService.
+            {t.impact.locationDisclaimer || "Location search uses Geoapify with OpenStreetMap data. Road routing uses OpenRouteService."}
           </p>
 
-          <p className="mt-2">
-            Faktor emisi pada prototype
-            ini masih berupa nilai awal
-            untuk pengembangan sistem.
-            Sebelum digunakan sebagai
-            hasil resmi kompetisi,
-            faktor emisi akan kita
-            standarkan berdasarkan sumber
-            data yang terdokumentasi.
-          </p>
-
-          <p className="mt-2">
-            Routing kereta, pesawat,
-            ferry, speedboat, dan kapal
-            akan menggunakan pendekatan
-            multimoda tersendiri agar
-            ARVENA tidak menganggap semua
-            perjalanan sebagai jaringan
-            jalan raya.
+          <p>
+            {t.impact.emissionDisclaimer || "Emission factors are based on the current prototype configuration and are provided for estimation purposes."}
           </p>
 
         </div>
@@ -1948,6 +1868,7 @@ function LocationInput({
   suggestions,
   showSuggestions,
   noResults,
+  locale = "id",
   onFocus,
   onChange,
   onSelect,
@@ -1962,6 +1883,7 @@ function LocationInput({
   suggestions: LocationResult[];
   showSuggestions: boolean;
   noResults: boolean;
+  locale?: string;
   onFocus: () => void;
   onChange: (
     value: string
@@ -1991,7 +1913,7 @@ function LocationInput({
               : "text-white/25 hover:text-white/50"
           }`}
         >
-          Pilih di peta
+          {locale === "en" ? "Select on map" : "Pilih di peta"}
         </button>
 
       </div>
@@ -2057,7 +1979,7 @@ function LocationInput({
 
         {loading && (
           <p className="pt-2 text-[10px] text-emerald-200/55">
-            Mencari lokasi...
+            {locale === "en" ? "Searching location..." : "Mencari lokasi..."}
           </p>
         )}
 
@@ -2066,10 +1988,10 @@ function LocationInput({
           value.trim()
             .length >=
             3 && (
-            <p className="pt-2 text-[10px] text-white/25">
-              Lokasi belum ditemukan.
-              Coba nama tempat,
-              jalan, atau area lain.
+            <p className="pt-2 text-[10px] text-white/40">
+              {locale === "en"
+                ? "Location not found. Try another place name, street, or area."
+                : "Lokasi belum ditemukan. Coba nama tempat, jalan, atau area lain."}
             </p>
           )}
 
@@ -2106,7 +2028,7 @@ function SuggestionList({
   ) => void;
 }) {
   return (
-    <div className="absolute left-0 right-0 top-[72px] z-50 overflow-hidden rounded-2xl border border-white/[0.08] bg-[#09130f] shadow-[0_25px_70px_rgba(0,0,0,0.55)]">
+    <div className="absolute left-0 right-0 top-[72px] z-50 overflow-hidden rounded-2xl border border-white/10 bg-[#092328] shadow-[0_25px_70px_rgba(0,0,0,0.55)] backdrop-blur">
 
       {items.map(
         (
@@ -2122,7 +2044,7 @@ function SuggestionList({
                 item
               )
             }
-            className="block w-full border-b border-white/[0.05] px-4 py-3 text-left transition last:border-b-0 hover:bg-emerald-300/[0.04]"
+            className="block w-full border-b border-white/[0.05] px-4 py-3 text-left transition last:border-b-0 hover:bg-emerald-300/[0.06]"
           >
 
             <p className="text-xs font-medium leading-5 text-white/75">
@@ -2157,6 +2079,7 @@ function SelectedLocation({
   label,
   location,
   active,
+  locale = "id",
   onClick,
 }: {
   label: string;
@@ -2164,6 +2087,7 @@ function SelectedLocation({
     | LocationResult
     | null;
   active: boolean;
+  locale?: string;
   onClick: () => void;
 }) {
   return (
@@ -2179,14 +2103,14 @@ function SelectedLocation({
       }`}
     >
 
-      <p className="text-[9px] uppercase tracking-[0.16em] text-white/20">
+      <p className="text-[9px] uppercase tracking-[0.16em] text-white/30">
         {label}
       </p>
 
-      <p className="mt-2 text-xs leading-5 text-white/55">
+      <p className="mt-2 text-xs leading-5 text-white/70">
         {location
           ? location.label
-          : "Belum dipilih"}
+          : (locale === "en" ? "Not selected" : "Belum dipilih")}
       </p>
 
     </button>

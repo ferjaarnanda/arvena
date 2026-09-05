@@ -23,13 +23,6 @@ type ProfileLocation = {
   district_code: string;
 };
 
-function formatRegionName(name: string) {
-  return name
-    .toLowerCase()
-    .replace(/\b\p{L}/gu, (char) =>
-      char.toUpperCase()
-    );
-}
 
 export default function NewResourcePage() {
   const supabase = createClient();
@@ -42,6 +35,7 @@ export default function NewResourcePage() {
   const [form, setForm] = useState({
     title: "",
     category: "",
+    custom_category: "",
     quantity: "",
     unit: "kg",
 
@@ -93,7 +87,7 @@ export default function NewResourcePage() {
     useState<Region[]>([]);
 
   const [loadingProvinces, setLoadingProvinces] =
-    useState(false);
+    useState(true);
 
   const [loadingCities, setLoadingCities] =
     useState(false);
@@ -183,9 +177,6 @@ export default function NewResourcePage() {
   // ==========================================
 
   async function loadProfile() {
-    setProfileLoading(true);
-    setError("");
-
     try {
       const {
         data: { user },
@@ -314,9 +305,6 @@ export default function NewResourcePage() {
   // ==========================================
 
   async function loadProvinces() {
-    setLoadingProvinces(true);
-    setRegionError("");
-
     try {
       const response = await fetch(
         "/api/regions/provinces",
@@ -522,8 +510,11 @@ export default function NewResourcePage() {
   // ==========================================
 
   useEffect(() => {
-    loadProfile();
-    loadProvinces();
+    const timer = setTimeout(() => {
+      void loadProfile();
+      void loadProvinces();
+    }, 0);
+    return () => clearTimeout(timer);
   }, []);
 
   // ==========================================
@@ -1168,6 +1159,7 @@ export default function NewResourcePage() {
 
         title: form.title,
         category: form.category,
+        custom_category: form.category === "other" ? (form.custom_category || "").trim() : null,
         quantity: quantity,
         unit: form.unit,
 
@@ -1530,9 +1522,29 @@ export default function NewResourcePage() {
               </option>
 
               <option value="other">
-                Lainnya
+                Lainnya / Material Khusus
               </option>
             </select>
+
+            {form.category === "other" && (
+              <div className="mt-4 rounded-2xl border border-emerald-400/30 bg-emerald-400/[0.04] p-4 transition-all animate-fadeIn">
+                <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-emerald-300">
+                  Jenis Material / Resource Kustom *
+                </label>
+                <input
+                  type="text"
+                  name="custom_category"
+                  value={form.custom_category || ""}
+                  onChange={handleChange}
+                  required
+                  placeholder="Contoh: Sisa Kain Perca, Palet Kayu Pinus, Abu Sekam Padi..."
+                  className="w-full rounded-xl border border-emerald-400/40 bg-[#0b1c16] px-4 py-3 text-sm text-white outline-none placeholder:text-white/30 focus:border-emerald-300 focus:bg-[#0e251e]"
+                />
+                <p className="mt-1.5 text-xs text-white/40">
+                  Nama material khusus ini akan disimpan dan dapat dicari secara otomatis oleh pembeli di marketplace.
+                </p>
+              </div>
+            )}
           </div>
 
           {/* ==========================================

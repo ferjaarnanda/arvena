@@ -1,6 +1,39 @@
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+
+type RequesterProfile = {
+  full_name: string | null;
+  username: string | null;
+  city: string | null;
+};
+
+type ResourceDetails = {
+  id: string;
+  owner_id: string;
+  title: string;
+  category: string;
+  quantity: number;
+  unit: string;
+  city: string | null;
+  price: number | null;
+  negotiation_percent: number | null;
+  status: string;
+};
+
+type IncomingRequest = {
+  id: string;
+  requested_quantity: number;
+  offered_price: number | null;
+  message: string | null;
+  status: string;
+  created_at: string;
+  resource_id: string;
+  requester_id: string;
+  resources: ResourceDetails | ResourceDetails[] | null;
+  profiles: RequesterProfile | RequesterProfile[] | null;
+};
 
 function formatRupiah(value: number | string) {
   const number = Number(value) || 0;
@@ -242,12 +275,12 @@ export default async function ResourceRequestsPage() {
             BACK
         ====================================== */}
 
-        <a
+        <Link
           href="/dashboard"
           className="text-sm text-emerald-300 transition hover:text-emerald-200"
         >
           ← Back to Dashboard
-        </a>
+        </Link>
 
         {/* ======================================
             HEADER
@@ -291,7 +324,7 @@ export default async function ResourceRequestsPage() {
         ) : (
           <div className="mt-10 space-y-6">
 
-            {requests.map((request: any) => {
+            {(requests as IncomingRequest[]).map((request: IncomingRequest) => {
               const resource = Array.isArray(
                 request.resources
               )
@@ -482,7 +515,7 @@ export default async function ResourceRequestsPage() {
 
                         <p className="mt-2 font-semibold">
                           {formatRupiah(
-                            resource?.quantity
+                            resource?.quantity ?? 0
                           )}{" "}
                           {resource?.unit}
                         </p>

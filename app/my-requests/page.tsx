@@ -1,5 +1,29 @@
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+
+type ResourceItem = {
+  id: string;
+  title: string;
+  category: string;
+  quantity: number;
+  unit: string;
+  city: string | null;
+  price: number | null;
+  status: string;
+  owner_id: string;
+};
+
+type RequestRecord = {
+  id: string;
+  requested_quantity: number;
+  offered_price: number | null;
+  message: string | null;
+  status: string;
+  created_at: string;
+  resource_id: string;
+  resources: ResourceItem | ResourceItem[] | null;
+};
 
 function formatRupiah(value: number | string) {
   const number = Number(value) || 0;
@@ -130,12 +154,12 @@ export default async function MyRequestsPage() {
               terhadap resource apa pun.
             </p>
 
-            <a
+            <Link
               href="/resources"
-              className="mt-6 inline-flex rounded-xl bg-emerald-300 px-5 py-3 font-semibold text-[#07130f] transition hover:bg-emerald-200"
+              className="mt-6 inline-flex rounded-xl bg-[#2A835F] border border-[#12544F] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#32a070]"
             >
               Explore Resources
-            </a>
+            </Link>
 
           </div>
         ) : (
@@ -146,8 +170,8 @@ export default async function MyRequestsPage() {
 
           <div className="mt-10 space-y-6">
 
-            {requests.map(
-              (request: any) => {
+            {(requests as RequestRecord[]).map(
+              (request: RequestRecord) => {
 
                 const resource =
                   Array.isArray(

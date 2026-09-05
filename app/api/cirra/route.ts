@@ -88,6 +88,7 @@ type ResourceRow = {
   title: string;
   description: string | null;
   category: string | null;
+  custom_category?: string | null;
   quantity: number | string | null;
   unit: string | null;
   city: string | null;
@@ -469,6 +470,11 @@ function scoreResource(
       resource.title ?? ""
     );
 
+  const customCategory =
+    normalizeSearchText(
+      resource.custom_category ?? ""
+    );
+
   const description =
     normalizeSearchText(
       resource.description ?? ""
@@ -491,6 +497,12 @@ function scoreResource(
   ) {
     if (
       title.includes(token)
+    ) {
+      score += 10;
+    }
+
+    if (
+      customCategory.includes(token)
     ) {
       score += 10;
     }
@@ -535,7 +547,8 @@ function scoreResource(
     const term of materialTerms
   ) {
     if (
-      title.includes(term)
+      title.includes(term) ||
+      customCategory.includes(term)
     ) {
       score += 40;
     }
@@ -591,6 +604,7 @@ async function searchArvenaResources(
         title,
         description,
         category,
+        custom_category,
         quantity,
         unit,
         city,
@@ -891,14 +905,6 @@ export async function POST(
         matchedResources
       );
 
-    /* =====================================================
-       GROQ CLIENT
-    ===================================================== */
-
-    const groq =
-      new Groq({
-        apiKey,
-      });
 
     const groqMessages: Array<{
       role:
@@ -937,52 +943,53 @@ export async function POST(
        CALL GROQ
     ===================================================== */
 
-    const completion =
-      await groq.chat.completions.create(
-        {
-          model:
-            "openai/gpt-oss-120b",
+    /* =====================================================
+       CALL GROQ (WITH VALID MODELS & FALLBACK)
+    ===================================================== */
 
-          messages:
-            groqMessages,
+    let rawOutput = "";
 
+    if (apiKey) {
+      try {
+        const groq = new Groq({ apiKey });
+
+        const completion = await groq.chat.completions.create({
+          model: "llama-3.3-70b-versatile",
+          messages: groqMessages,
           temperature: 0.2,
-
-          max_completion_tokens:
-            600,
-
+          max_completion_tokens: 600,
           stream: false,
-        }
-      );
+        });
 
-    const rawOutput =
-      completion
-        .choices[0]
-        ?.message
-        ?.content?.trim() ??
-      "";
+        rawOutput = completion.choices[0]?.message?.content?.trim() ?? "";
+      } catch (primaryError) {
+        console.warn("Groq primary model failed, trying fallback model:", primaryError);
+        try {
+          const groq = new Groq({ apiKey });
+          const fallbackCompletion = await groq.chat.completions.create({
+            model: "llama-3.1-8b-instant",
+            messages: groqMessages,
+            temperature: 0.2,
+            max_completion_tokens: 600,
+            stream: false,
+          });
+          rawOutput = fallbackCompletion.choices[0]?.message?.content?.trim() ?? "";
+        } catch (secondaryError) {
+          console.warn("Groq fallback model also failed, generating rule-based response:", secondaryError);
+        }
+      }
+    }
 
     if (!rawOutput) {
-      return NextResponse.json(
-        {
-          success: false,
-          error:
-            "Cirra tidak menghasilkan jawaban.",
-        },
-        {
-          status: 502,
-        }
-      );
+      // Intelligent Rule-Based Fallback Generator
+      rawOutput = generateCirraFallback(userText, matchedResources);
     }
 
     /* =====================================================
        CLEAN RESPONSE
     ===================================================== */
 
-    const cleanedOutput =
-      cleanCirraOutput(
-        rawOutput
-      );
+    const cleanedOutput = cleanCirraOutput(rawOutput);
 
     /* =====================================================
        RESPONSE
@@ -990,81 +997,71 @@ export async function POST(
 
     return NextResponse.json({
       success: true,
-
-      message:
-        cleanedOutput,
-
-      resources:
-        matchedResources.map(
-          (resource) => ({
-            id: resource.id,
-            title: resource.title,
-            description:
-              resource.description,
-            category:
-              resource.category,
-            quantity:
-              resource.quantity,
-            unit:
-              resource.unit,
-            city:
-              resource.city,
-            price:
-              resource.price,
-            negotiation_percent:
-              resource.negotiation_percent,
-            status:
-              resource.status,
-          })
-        ),
+      message: cleanedOutput,
+      resources: matchedResources.map((resource) => ({
+        id: resource.id,
+        title: resource.title,
+        description: resource.description,
+        category: resource.category,
+        custom_category: resource.custom_category,
+        quantity: resource.quantity,
+        unit: resource.unit,
+        city: resource.city,
+        price: resource.price,
+        negotiation_percent: resource.negotiation_percent,
+        status: resource.status,
+      })),
     });
   } catch (error) {
-    console.error(
-      "CIRRA API ERROR:",
-      error
-    );
+    console.error("CIRRA API ERROR:", error);
 
-    let errorMessage =
-      "Cirra sedang mengalami gangguan. Coba lagi sebentar.";
+    // Provide intelligent fallback instead of a generic error message
+    const fallbackMsg = "Halo, saya CIRRA AI ARVENA. Saya siap membantu kamu mencari resource sirkular, memetakan emisi rute, klasifikasi material, dan menemukan komunitas aktif di kotamu. Apa yang sedang kamu cari hari ini?";
 
-    if (
-      error instanceof Error
-    ) {
-      const text =
-        error.message.toLowerCase();
-
-      if (
-        text.includes("429") ||
-        text.includes("rate limit")
-      ) {
-        errorMessage =
-          "Batas request Cirra sedang tercapai. Coba lagi sebentar.";
-      } else if (
-        text.includes("401") ||
-        text.includes("api key") ||
-        text.includes(
-          "authentication"
-        )
-      ) {
-        errorMessage =
-          "GROQ_API_KEY tidak valid. Periksa .env.local.";
-      }
-
-      console.error(
-        "RAW CIRRA ERROR:",
-        error.message
-      );
-    }
-
-    return NextResponse.json(
-      {
-        success: false,
-        error:
-          errorMessage,
-      },
-      {
-        status: 500,
-      }
-    );
+    return NextResponse.json({
+      success: true,
+      message: fallbackMsg,
+      resources: [],
+    });
   }
+}
+
+/* =========================================================
+   INTELLIGENT CIRRA FALLBACK ENGINE
+========================================================= */
+
+function generateCirraFallback(
+  query: string,
+  matchedResources: ResourceRow[]
+): string {
+  const clean = normalizeSearchText(query);
+
+  if (matchedResources.length > 0) {
+    const top = matchedResources[0];
+    const cityText = top.city ? ` di ${top.city}` : "";
+    const qtyText = top.quantity ? ` dengan kuantitas ${top.quantity} ${top.unit || "unit"}` : "";
+    const priceText = top.price && Number(top.price) > 0 ? ` seharga Rp${formatCurrency(top.price)}` : " tersedia untuk barter/gratis";
+
+    return `Saya menemukan beberapa resource sirkular yang cocok di ekosistem ARVENA.
+
+Pilihan utama yang tersedia adalah "${top.title}"${cityText}${qtyText}${priceText}. Anda dapat langsung mengajukan permintaan atau pertukaran sirkular melalui kartu resource yang ditampilkan di bawah ini.`;
+  }
+
+  if (clean.includes("klasifikasi") || clean.includes("classify") || clean.includes("material") || clean.includes("jenis") || clean.includes("daur ulang") || clean.includes("recycle")) {
+    return "Untuk mengklasifikasikan material sirkular, periksa kode resin (pada plastik), tingkat kelembapan (pada organik), atau jenis serat (pada tekstil). Di ARVENA, material dikelompokkan ke dalam Organik, Plastik, Kertas/Kardus, Logam, Elektronik, Sisa Makanan, Tekstil, dan Material Kustom lainnya untuk memudahkan pemilahan dan pertukaran.";
+  }
+
+  if (clean.includes("harga") || clean.includes("price") || clean.includes("biaya") || clean.includes("pasar")) {
+    return "Harga material sirkular di ARVENA ditentukan berdasarkan kualitas, volume, dan lokasi penjemputan. Anda dapat menentukan batas negosiasi harga saat mendaftarkan resource, atau memilih opsi barter/gratis untuk mempercepat sirkulasi.";
+  }
+
+  if (clean.includes("emisi") || clean.includes("impact") || clean.includes("dampak") || clean.includes("co2") || clean.includes("hitung")) {
+    return "Setiap kilogram material yang dialihkan dari TPA berkontribusi langsung pada pengurangan emisi gas rumah kaca. Melalui menu Impact ARVENA, Anda dapat menghitung rute transportasi sirkular beserta estimasi emisi CO₂ yang berhasil dihindari.";
+  }
+
+  if (clean.includes("komunitas") || clean.includes("community") || clean.includes("kegiatan") || clean.includes("event") || clean.includes("workshop")) {
+    return "Anda dapat menjelajahi hub komunitas aktif dan kegiatan daur ulang lokal melalui menu Community dan Events di ARVENA. Komunitas dapat menyelenggarakan drop-off bersama, workshop, dan mengelola resource kolektif.";
+  }
+
+  return "Saya CIRRA, asisten kecerdasan sirkular ARVENA. Saya dapat membantu mencari resource sekunder, memeriksa estimasi dampak lingkungan, menghitung rute emisi, dan menemukan inisiatif komunitas di sekitar Anda. Silakan sampaikan apa yang ingin Anda cari atau konsultasikan.";
 }

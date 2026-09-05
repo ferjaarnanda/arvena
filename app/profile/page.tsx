@@ -9,6 +9,8 @@ import {
 
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
+import { LogOut } from "lucide-react";
+import { useLanguage } from "@/lib/i18n/context";
 
 /* =========================================================
    TYPES
@@ -229,6 +231,15 @@ export default function ProfilePage() {
   );
 
   const router = useRouter();
+  const { locale } = useLanguage();
+  const [signingOut, setSigningOut] = useState(false);
+
+  async function handleSignOut() {
+    setSigningOut(true);
+    await supabase.auth.signOut();
+    router.push("/auth/login");
+    router.refresh();
+  }
 
   /* =======================================================
      USER
@@ -613,11 +624,8 @@ export default function ProfilePage() {
         } =
           await supabase.auth.getUser();
 
-        if (userError) {
-          console.error(
-            "GET USER ERROR:",
-            userError
-          );
+        if (userError && userError.name !== "AuthSessionMissingError" && !userError.message?.toLowerCase().includes("session")) {
+          console.warn("User session check:", userError.message);
         }
 
         if (!user) {
@@ -1812,7 +1820,7 @@ export default function ProfilePage() {
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-[#07130f] px-6 py-12 text-white">
+      <main className="min-h-screen bg-[#092328] px-6 py-12 text-white">
         <div className="mx-auto max-w-4xl">
           <div className="animate-pulse">
             <div className="h-4 w-32 rounded bg-white/10" />
@@ -1833,7 +1841,13 @@ export default function ProfilePage() {
   ========================================================= */
 
   return (
-    <main className="min-h-screen bg-[#07130f] px-6 py-10 text-white md:py-14">
+    <main className="relative min-h-screen bg-[#092328] px-6 py-10 text-white md:py-14 overflow-hidden">
+      {/* Atmospheric beam */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute -top-24 -left-24 h-[550px] w-[550px] rounded-full opacity-20"
+        style={{ background: "radial-gradient(circle at 30% 30%, #2A835F 0%, transparent 70%)" }}
+      />
       <div className="mx-auto max-w-4xl">
 
         {/* =================================================
@@ -1935,6 +1949,27 @@ export default function ProfilePage() {
                 </p>
               )}
 
+            </div>
+
+            {/* LOG OUT BUTTON (HEADER) */}
+            <div className="sm:ml-auto self-start sm:self-center">
+              <button
+                type="button"
+                onClick={handleSignOut}
+                disabled={signingOut}
+                className="inline-flex items-center gap-2 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-2.5 text-xs font-semibold text-red-300 transition hover:bg-red-500/20 hover:border-red-500/40 disabled:opacity-50"
+              >
+                <LogOut className="h-3.5 w-3.5" />
+                <span>
+                  {signingOut
+                    ? locale === "id"
+                      ? "Keluar..."
+                      : "Logging out..."
+                    : locale === "id"
+                      ? "Keluar"
+                      : "Log Out"}
+                </span>
+              </button>
             </div>
 
           </div>
@@ -2906,18 +2941,34 @@ export default function ProfilePage() {
 
             </div>
 
-            <button
-              type="submit"
-              disabled={
-                saving ||
-                !requiredFieldsComplete
-              }
-              className="rounded-xl bg-emerald-400 px-7 py-3 font-semibold text-black transition hover:-translate-y-0.5 hover:bg-emerald-300 hover:shadow-lg hover:shadow-emerald-400/10 disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              {saving
-                ? "Saving..."
-                : "Save Profile"}
-            </button>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={handleSignOut}
+                disabled={signingOut}
+                className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-5 py-3 text-sm font-semibold text-white/70 transition hover:bg-white/10 hover:text-white disabled:opacity-50"
+              >
+                <LogOut className="h-4 w-4" />
+                <span>{locale === "id" ? "Keluar" : "Log Out"}</span>
+              </button>
+
+              <button
+                type="submit"
+                disabled={
+                  saving ||
+                  !requiredFieldsComplete
+                }
+                className="rounded-xl bg-[#2A835F] border border-[#12544F] px-7 py-3 font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-[#349e73] disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                {saving
+                  ? locale === "id"
+                    ? "Menyimpan..."
+                    : "Saving..."
+                  : locale === "id"
+                    ? "Simpan Profil"
+                    : "Save Profile"}
+              </button>
+            </div>
 
           </div>
 
