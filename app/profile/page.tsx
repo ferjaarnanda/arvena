@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  useCallback,
   useEffect,
   useMemo,
   useState,
@@ -9,12 +8,7 @@ import {
 
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
-import { LogOut } from "lucide-react";
 import { useLanguage } from "@/lib/i18n/context";
-
-/* =========================================================
-   TYPES
-========================================================= */
 
 type Region = {
   code: string;
@@ -24,9 +18,16 @@ type Region = {
 type ProfileForm = {
   full_name: string;
   username: string;
+
   province: string;
+  province_code: string;
+
   city: string;
+  city_code: string;
+
   district: string;
+  district_code: string;
+
   role: string;
   organization: string;
   bio: string;
@@ -37,42 +38,46 @@ type ProfileMeta = {
   avatar_url: string;
 };
 
-/* =========================================================
-   CONSTANTS
-========================================================= */
-
 const ROLES = [
   {
     value: "citizen",
-    label: "Citizen",
+    id: "Warga",
+    en: "Citizen",
   },
   {
     value: "student",
-    label: "Student",
+    id: "Mahasiswa/Pelajar",
+    en: "Student",
   },
   {
     value: "organization",
-    label: "Organization",
+    id: "Organisasi",
+    en: "Organization",
   },
   {
     value: "business",
-    label: "Business",
+    id: "Bisnis",
+    en: "Business",
   },
   {
     value: "community",
-    label: "Community",
+    id: "Komunitas",
+    en: "Community",
   },
   {
     value: "government",
-    label: "Government",
+    id: "Pemerintah",
+    en: "Government",
   },
   {
     value: "researcher",
-    label: "Researcher",
+    id: "Peneliti",
+    en: "Researcher",
   },
   {
     value: "other",
-    label: "Other",
+    id: "Lainnya",
+    en: "Other",
   },
 ];
 
@@ -91,51 +96,27 @@ const STUDENT_LEVELS = [
    HELPERS
 ========================================================= */
 
-/**
- * Digunakan HANYA untuk pencocokan.
- *
- * Tidak pernah digunakan sebagai value yang disimpan
- * ke database atau ditampilkan ke user.
- *
- * Contoh:
- *
- * "Tebing Tinggi"
- * "tebing tinggi"
- * "TEBING TINGGI"
- *
- * akan dianggap sama ketika mencari.
- *
- * Tetapi value asli yang ditampilkan tetap berasal
- * dari API/database.
- */
 function normalizeSearch(value: string) {
   return value
     .toLowerCase()
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
-    .trim()
-    .replace(/\s+/g, " ");
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
-/**
- * Sort hanya berdasarkan nama.
- *
- * PENTING:
- * Tidak mengubah nama asli.
- *
- * "Tebing Tinggi" tetap "Tebing Tinggi".
- */
 function sortRegions(regions: Region[]) {
   return [...regions].sort((a, b) =>
-    a.name.localeCompare(b.name, "id", {
-      sensitivity: "base",
-    })
+    a.name.localeCompare(
+      b.name,
+      "id",
+      {
+        sensitivity: "base",
+      }
+    )
   );
 }
 
-/**
- * Filter berdasarkan pencarian.
- */
 function filterRegions(
   regions: Region[],
   query: string
@@ -143,44 +124,87 @@ function filterRegions(
   const normalizedQuery =
     normalizeSearch(query);
 
-  const sorted = sortRegions(regions);
+  const sorted =
+    sortRegions(regions);
 
   if (!normalizedQuery) {
     return sorted;
   }
 
   return sorted.filter((region) =>
-    normalizeSearch(region.name).includes(
-      normalizedQuery
-    )
+    normalizeSearch(
+      region.name
+    ).includes(normalizedQuery)
   );
 }
 
 /**
- * Cari region berdasarkan nama tanpa mengubah
- * nama region tersebut.
+ * API wilayah dapat mengembalikan:
+ *
+ * { data: [...] }
+ * { data: { data: [...] } }
+ * [...]
+ *
+ * Kita normalisasi semuanya di satu tempat.
  */
-function findRegionByName(
-  regions: Region[],
-  value: string
-) {
-  const normalizedValue =
-    normalizeSearch(value);
-
-  if (!normalizedValue) {
-    return undefined;
+function extractRegionArray(
+  payload: unknown
+): Region[] {
+  if (Array.isArray(payload)) {
+    return payload
+      .filter(
+        (item): item is Region =>
+          typeof item === "object" &&
+          item !== null &&
+          typeof (
+            item as Record<
+              string,
+              unknown
+            >
+          ).code === "string" &&
+          typeof (
+            item as Record<
+              string,
+              unknown
+            >
+          ).name === "string"
+      );
   }
 
-  return regions.find(
-    (region) =>
-      normalizeSearch(region.name) ===
-      normalizedValue
-  );
+  if (
+    typeof payload !==
+    "object" ||
+    payload === null
+  ) {
+    return [];
+  }
+
+  const object =
+    payload as Record<
+      string,
+      unknown
+    >;
+
+  const candidates = [
+    object.data,
+    object.results,
+    object.items,
+  ];
+
+  for (const candidate of candidates) {
+    const result =
+      extractRegionArray(
+        candidate
+      );
+
+    if (result.length > 0) {
+      return result;
+    }
+  }
+
+  return [];
 }
 
-/**
- * Ambil initials profile.
- */
 function getInitials(
   fullName: string,
   username: string
@@ -210,13 +234,29 @@ function getInitials(
 }
 
 /**
- * Role label.
+ * Beberapa versi API / data lama dapat
+ * memiliki variasi penulisan nama wilayah.
+ *
+ * Matching dibuat cukup longgar tetapi
+ * tetap aman karena parent code tetap
+ * digunakan untuk city/district.
  */
-function getRoleLabel(role: string) {
-  return (
-    ROLES.find(
-      (item) => item.value === role
-    )?.label ?? "Citizen"
+function findRegionByName(
+  regions: Region[],
+  name: string
+) {
+  const target =
+    normalizeSearch(name);
+
+  if (!target) {
+    return undefined;
+  }
+
+  return regions.find(
+    (region) =>
+      normalizeSearch(
+        region.name
+      ) === target
   );
 }
 
@@ -230,16 +270,443 @@ export default function ProfilePage() {
     []
   );
 
-  const router = useRouter();
-  const { locale } = useLanguage();
-  const [signingOut, setSigningOut] = useState(false);
+  const router =
+    useRouter();
 
-  async function handleSignOut() {
-    setSigningOut(true);
-    await supabase.auth.signOut();
-    router.push("/auth/login");
-    router.refresh();
-  }
+  const { locale } =
+    useLanguage();
+
+  /**
+   * MIX mengikuti konsep existing
+   * dictionary ARVENA:
+   *
+   * - EN -> English
+   * - ID -> Indonesian
+   * - default/MIX -> mixed UI
+   */
+  const isEnglish =
+    locale === "en";
+
+  const isIndonesian =
+    locale === "id";
+
+  /* =======================================================
+     TRANSLATION
+  ======================================================= */
+
+  const text = {
+    profileLabel: isEnglish
+      ? "ARVENA PROFILE"
+      : "ARVENA PROFILE",
+
+    profileTitle: isEnglish
+      ? "Your Profile"
+      : isIndonesian
+        ? "Profil Kamu"
+        : "Your Profile",
+
+    profileDescription:
+      isEnglish
+        ? "Manage your profile and location information to build more relevant connections across the ARVENA ecosystem."
+        : isIndonesian
+          ? "Kelola informasi profil dan lokasi kamu untuk membangun koneksi yang lebih relevan di ekosistem ARVENA."
+          : "Kelola informasi profil dan lokasi kamu untuk membangun koneksi yang lebih relevan di ekosistem ARVENA.",
+
+    completeTitle:
+      isEnglish
+        ? "Complete your profile"
+        : "Lengkapi profile kamu",
+
+    completeDescription:
+      isEnglish
+        ? "Required information is needed before you can perform certain activities such as offering resources."
+        : "Data wajib diperlukan sebelum kamu dapat melakukan aktivitas tertentu seperti menawarkan resource.",
+
+    completeStatus:
+      isEnglish
+        ? "Profile complete"
+        : "Profile lengkap",
+
+    completeStatusDescription:
+      isEnglish
+        ? "All required information has been completed."
+        : "Semua informasi wajib sudah dilengkapi.",
+
+    identity:
+      isEnglish
+        ? "Identity"
+        : "Identitas",
+
+    personalInformation:
+      isEnglish
+        ? "Personal Information"
+        : "Informasi Pribadi",
+
+    personalDescription:
+      isEnglish
+        ? "Basic information used on your ARVENA profile."
+        : "Informasi dasar yang digunakan pada profil ARVENA kamu.",
+
+    fullName:
+      isEnglish
+        ? "Full Name"
+        : "Nama Lengkap",
+
+    username:
+      "Username",
+
+    usernameHint:
+      isEnglish
+        ? "Your username is used as your short identity on ARVENA."
+        : "Username digunakan sebagai identitas singkat di ARVENA.",
+
+    role:
+      isEnglish
+        ? "Role"
+        : "Peran",
+
+    educationLevel:
+      isEnglish
+        ? "Education Level"
+        : "Jenjang Pendidikan",
+
+    chooseLevel:
+      isEnglish
+        ? "Choose education level"
+        : "Pilih jenjang",
+
+    school:
+      isEnglish
+        ? "School / University"
+        : "Nama Sekolah / Kampus",
+
+    location:
+      isEnglish
+        ? "Location"
+        : "Lokasi",
+
+    yourLocation:
+      isEnglish
+        ? "Your Location"
+        : "Lokasi Kamu",
+
+    locationDescription:
+      isEnglish
+        ? "Set your area so activities and connections in ARVENA can be more relevant."
+        : "Tentukan wilayah kamu agar aktivitas dan koneksi di ARVENA lebih relevan.",
+
+    province:
+      isEnglish
+        ? "Province"
+        : "Provinsi",
+
+    city:
+      isEnglish
+        ? "Regency / City"
+        : "Kabupaten / Kota",
+
+    district:
+      isEnglish
+        ? "District"
+        : "Kecamatan",
+
+    searchProvince:
+      isEnglish
+        ? "Search province..."
+        : "Cari provinsi...",
+
+    searchCity:
+      isEnglish
+        ? "Search regency or city..."
+        : "Cari kabupaten atau kota...",
+
+    searchDistrict:
+      isEnglish
+        ? "Search district..."
+        : "Cari kecamatan...",
+
+    chooseProvinceFirst:
+      isEnglish
+        ? "Choose a province first"
+        : "Pilih provinsi terlebih dahulu",
+
+    chooseCityFirst:
+      isEnglish
+        ? "Choose a regency/city first"
+        : "Pilih kabupaten/kota terlebih dahulu",
+
+    loadingProvince:
+      isEnglish
+        ? "Loading provinces..."
+        : "Memuat provinsi...",
+
+    loadingCity:
+      isEnglish
+        ? "Loading regencies/cities..."
+        : "Memuat kabupaten/kota...",
+
+    loadingDistrict:
+      isEnglish
+        ? "Loading districts..."
+        : "Memuat kecamatan...",
+
+    provinceNotFound:
+      isEnglish
+        ? "Province not found."
+        : "Provinsi tidak ditemukan.",
+
+    cityNotFound:
+      isEnglish
+        ? "Regency/city not found."
+        : "Kabupaten/kota tidak ditemukan.",
+
+    districtNotFound:
+      isEnglish
+        ? "District not found."
+        : "Kecamatan tidak ditemukan.",
+
+    about:
+      isEnglish
+        ? "About"
+        : "Tentang",
+
+    aboutYou:
+      isEnglish
+        ? "About You"
+        : "Tentang Kamu",
+
+    aboutDescription:
+      isEnglish
+        ? "Tell us a little about yourself and your contribution to the ARVENA ecosystem."
+        : "Ceritakan sedikit tentang dirimu dan kontribusimu di ekosistem ARVENA.",
+
+    bioOptional:
+      isEnglish
+        ? "Bio is optional."
+        : "Bio bersifat opsional.",
+
+    bioPlaceholder:
+      isEnglish
+        ? "Example: I am interested in circular economy, environmental technology, and sustainable cities..."
+        : "Contoh: Saya tertarik pada circular economy, teknologi lingkungan, dan pengembangan kota berkelanjutan...",
+
+    save:
+      isEnglish
+        ? "Save Profile"
+        : "Simpan Profil",
+
+    saving:
+      isEnglish
+        ? "Saving..."
+        : "Menyimpan...",
+
+    profileReady:
+      isEnglish
+        ? "Your profile is complete"
+        : "Profile kamu sudah lengkap",
+
+    profileReadyDescription:
+      isEnglish
+        ? "Required information is available and your profile is ready to use."
+        : "Informasi wajib sudah tersedia dan profile siap digunakan.",
+
+    profileIncomplete:
+      isEnglish
+        ? "Complete your profile first"
+        : "Lengkapi profile terlebih dahulu",
+
+    profileIncompleteDescription:
+      isEnglish
+        ? "Name, username, role, and location are required. Bio and profile photo are optional."
+        : "Nama, username, role, dan lokasi wajib diisi. Bio dan foto profil bersifat opsional.",
+
+    userNotDetected:
+      isEnglish
+        ? "User could not be detected. Please refresh the page."
+        : "User belum terdeteksi. Silakan refresh halaman.",
+
+    requiredIncomplete:
+      isEnglish
+        ? "Please complete all required information first."
+        : "Lengkapi semua informasi wajib terlebih dahulu.",
+
+    loadProfileError:
+      isEnglish
+        ? "Profile could not be loaded. Please refresh the page."
+        : "Profile gagal dimuat. Silakan refresh halaman.",
+
+    profileNotFound:
+      isEnglish
+        ? "Profile data is not available. Please contact the administrator."
+        : "Data profile belum tersedia. Silakan hubungi administrator.",
+
+    regionLoadError:
+      isEnglish
+        ? "Location data could not be loaded. Please try refreshing the page."
+        : "Data wilayah gagal dimuat. Coba refresh halaman.",
+
+    saveSuccess:
+      isEnglish
+        ? "Profile saved successfully."
+        : "Profile berhasil disimpan.",
+
+    saveError:
+      isEnglish
+        ? "An error occurred while saving your profile."
+        : "Terjadi kesalahan saat menyimpan profile.",
+
+    avatarChange:
+      isEnglish
+        ? "Change"
+        : "Ganti",
+
+    avatarUpdated:
+      isEnglish
+        ? "Profile photo updated successfully."
+        : "Foto profil berhasil diperbarui.",
+
+    maxPhoto:
+      isEnglish
+        ? "Profile photo must be 3 MB or smaller."
+        : "Ukuran foto maksimal 3 MB.",
+
+    imageOnly:
+      isEnglish
+        ? "File must be an image."
+        : "File harus berupa gambar.",
+
+    roleName: (
+      role: string
+    ) => {
+      const found =
+        ROLES.find(
+          (item) =>
+            item.value === role
+        );
+
+      if (!found) {
+        return isEnglish
+          ? "Citizen"
+          : "Warga";
+      }
+
+      return isEnglish
+        ? found.en
+        : found.id;
+    },
+
+    organization:
+      isEnglish
+        ? "Organization"
+        : "Organisasi",
+
+    organizationPlaceholder:
+      isEnglish
+        ? "Organization / company"
+        : "Organisasi / perusahaan",
+
+    schoolPlaceholder:
+      isEnglish
+        ? "Example: Diponegoro University"
+        : "Contoh: Universitas Diponegoro",
+
+    researchInstitution:
+      isEnglish
+        ? "Research Institution"
+        : "Institusi Penelitian",
+
+    researchFocus:
+      isEnglish
+        ? "Research Focus"
+        : "Fokus Penelitian",
+
+    researchPlaceholder:
+      isEnglish
+        ? "Example: Circular economy and waste management"
+        : "Contoh: Circular economy dan waste management",
+
+    otherRole:
+      isEnglish
+        ? "Describe your role"
+        : "Jelaskan peran kamu",
+
+    otherRolePlaceholder:
+      isEnglish
+        ? "Example: Waste collector"
+        : "Contoh: Pengelola sampah",
+
+    orgLabel: (
+      role: string
+    ) => {
+      switch (role) {
+        case "organization":
+          return isEnglish
+            ? "Organization Name"
+            : "Nama Organisasi";
+
+        case "business":
+          return isEnglish
+            ? "Business Name"
+            : "Nama Bisnis";
+
+        case "community":
+          return isEnglish
+            ? "Community Name"
+            : "Nama Komunitas";
+
+        case "government":
+          return isEnglish
+            ? "Government Institution"
+            : "Nama Institusi Pemerintahan";
+
+        case "researcher":
+          return isEnglish
+            ? "Research Institution"
+            : "Nama Institusi Penelitian";
+
+        default:
+          return isEnglish
+            ? "Organization"
+            : "Organisasi";
+      }
+    },
+
+    orgPlaceholder: (
+      role: string
+    ) => {
+      switch (role) {
+        case "organization":
+          return isEnglish
+            ? "Example: Environmental Care Community"
+            : "Contoh: Komunitas Peduli Lingkungan";
+
+        case "business":
+          return isEnglish
+            ? "Example: ARVENA Recycling"
+            : "Contoh: ARVENA Recycling";
+
+        case "community":
+          return isEnglish
+            ? "Example: Green Community Semarang"
+            : "Contoh: Green Community Semarang";
+
+        case "government":
+          return isEnglish
+            ? "Example: Environmental Agency"
+            : "Contoh: Dinas Lingkungan Hidup";
+
+        case "researcher":
+          return isEnglish
+            ? "Example: Diponegoro University"
+            : "Contoh: Universitas Diponegoro";
+
+        default:
+          return isEnglish
+            ? "Organization / company"
+            : "Organisasi / perusahaan";
+      }
+    },
+  };
 
   /* =======================================================
      USER
@@ -269,16 +736,23 @@ export default function ProfilePage() {
     useState<ProfileForm>({
       full_name: "",
       username: "",
+
       province: "",
+      province_code: "",
+
       city: "",
+      city_code: "",
+
       district: "",
+      district_code: "",
+
       role: "citizen",
       organization: "",
       bio: "",
     });
 
   /* =======================================================
-     EXTRA PROFILE DATA
+     ROLE EXTRA
   ======================================================= */
 
   const [studentLevel, setStudentLevel] =
@@ -302,28 +776,6 @@ export default function ProfilePage() {
 
   const [districts, setDistricts] =
     useState<Region[]>([]);
-
-  /* =======================================================
-     REGION CODES
-  ======================================================= */
-
-  /**
-   * Code provinsi yang sedang dipilih.
-   *
-   * TIDAK disimpan ke database.
-   * Hanya digunakan untuk mengambil kabupaten/kota.
-   */
-  const [selectedProvinceCode, setSelectedProvinceCode] =
-    useState("");
-
-  /**
-   * Code kabupaten/kota yang sedang dipilih.
-   *
-   * TIDAK disimpan ke database.
-   * Hanya digunakan untuk mengambil kecamatan.
-   */
-  const [selectedCityCode, setSelectedCityCode] =
-    useState("");
 
   /* =======================================================
      SEARCH
@@ -387,248 +839,155 @@ export default function ProfilePage() {
     useState("");
 
   /* =========================================================
+     GENERIC REGION FETCHER
+  ========================================================= */
+
+  async function fetchRegions(
+    url: string
+  ): Promise<Region[]> {
+    const response =
+      await fetch(url, {
+        cache: "no-store",
+      });
+
+    if (!response.ok) {
+      let detail = "";
+
+      try {
+        detail =
+          await response.text();
+      } catch {
+        // ignore
+      }
+
+      console.error(
+        "REGION REQUEST FAILED:",
+        url,
+        response.status,
+        detail
+      );
+
+      throw new Error(
+        `Region request failed: ${response.status}`
+      );
+    }
+
+    const result =
+      await response.json();
+
+    const regions =
+      extractRegionArray(result);
+
+    if (
+      regions.length === 0
+    ) {
+      console.error(
+        "REGION RESPONSE HAS NO DATA:",
+        url,
+        result
+      );
+
+      throw new Error(
+        "Region response is empty or invalid."
+      );
+    }
+
+    return sortRegions(
+      regions
+    );
+  }
+
+  /* =========================================================
      LOAD PROVINCES
   ========================================================= */
 
-  const loadProvinces = useCallback(
-    async () => {
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadProvinces() {
       setLoadingProvinces(true);
       setRegionError("");
 
       try {
-        const response = await fetch(
-          "/api/regions/provinces",
-          {
-            cache: "no-store",
-          }
-        );
+        let regions: Region[] = [];
 
-        if (!response.ok) {
-          throw new Error(
-            "Gagal mengambil data provinsi."
+        try {
+          regions =
+            await fetchRegions(
+              "/api/regions/provinces"
+            );
+        } catch (primaryError) {
+          console.warn(
+            "PRIMARY PROVINCE ENDPOINT FAILED:",
+            primaryError
           );
+
+          /**
+           * Fallback ke route /api/regions
+           * yang juga digunakan oleh beberapa
+           * versi ARVENA sebelumnya.
+           */
+          regions =
+            await fetchRegions(
+              "/api/regions"
+            );
         }
 
-        const result =
-          await response.json();
-
-        const data =
-          Array.isArray(result?.data)
-            ? result.data
-            : [];
-
-        setProvinces(
-          sortRegions(data)
-        );
-
-        return sortRegions(data);
+        if (!cancelled) {
+          setProvinces(
+            regions
+          );
+        }
       } catch (error) {
         console.error(
           "LOAD PROVINCES ERROR:",
           error
         );
 
-        setProvinces([]);
-
-        setRegionError(
-          "Data provinsi gagal dimuat. Coba refresh halaman."
-        );
-
-        return [];
+        if (!cancelled) {
+          setProvinces([]);
+          setRegionError(
+            text.regionLoadError
+          );
+        }
       } finally {
-        setLoadingProvinces(false);
+        if (!cancelled) {
+          setLoadingProvinces(
+            false
+          );
+        }
       }
-    },
-    []
-  );
+    }
+
+    void loadProvinces();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [text.regionLoadError]);
 
   /* =========================================================
-     LOAD CITIES BY PROVINCE CODE
-  ========================================================= */
-
-  const loadCities = useCallback(
-    async (
-      provinceCode: string
-    ) => {
-      if (!provinceCode) {
-        setCities([]);
-        setSelectedCityCode("");
-        return [];
-      }
-
-      setLoadingCities(true);
-      setRegionError("");
-
-      try {
-        const response = await fetch(
-          `/api/regions/regencies/${encodeURIComponent(
-            provinceCode.trim()
-          )}`,
-          {
-            cache: "no-store",
-          }
-        );
-
-        if (!response.ok) {
-          const errorText =
-            await response.text();
-
-          console.error(
-            "CITY API RESPONSE:",
-            errorText
-          );
-
-          throw new Error(
-            `Gagal mengambil data kabupaten/kota. Status: ${response.status}`
-          );
-        }
-
-        const result =
-          await response.json();
-
-        if (
-          !Array.isArray(
-            result?.data
-          )
-        ) {
-          throw new Error(
-            "Format data kabupaten/kota tidak valid."
-          );
-        }
-
-        const cityData =
-          sortRegions(result.data);
-
-        setCities(cityData);
-
-        return cityData;
-      } catch (error) {
-        console.error(
-          "LOAD CITIES ERROR:",
-          error
-        );
-
-        setCities([]);
-
-        setRegionError(
-          "Data kabupaten/kota gagal dimuat."
-        );
-
-        return [];
-      } finally {
-        setLoadingCities(false);
-      }
-    },
-    []
-  );
-
-  /* =========================================================
-     LOAD DISTRICTS BY CITY CODE
-  ========================================================= */
-
-  const loadDistricts = useCallback(
-    async (
-      cityCode: string
-    ) => {
-      if (!cityCode) {
-        setDistricts([]);
-        return [];
-      }
-
-      setLoadingDistricts(true);
-      setRegionError("");
-
-      try {
-        const response = await fetch(
-          `/api/regions/districts/${encodeURIComponent(
-            cityCode.trim()
-          )}`,
-          {
-            cache: "no-store",
-          }
-        );
-
-        if (!response.ok) {
-          const errorText =
-            await response.text();
-
-          console.error(
-            "DISTRICT API RESPONSE:",
-            errorText
-          );
-
-          throw new Error(
-            `Gagal mengambil data kecamatan. Status: ${response.status}`
-          );
-        }
-
-        const result =
-          await response.json();
-
-        if (
-          !Array.isArray(
-            result?.data
-          )
-        ) {
-          throw new Error(
-            "Format data kecamatan tidak valid."
-          );
-        }
-
-        const districtData =
-          sortRegions(result.data);
-
-        setDistricts(
-          districtData
-        );
-
-        return districtData;
-      } catch (error) {
-        console.error(
-          "LOAD DISTRICTS ERROR:",
-          error
-        );
-
-        setDistricts([]);
-
-        setRegionError(
-          "Data kecamatan gagal dimuat."
-        );
-
-        return [];
-      } finally {
-        setLoadingDistricts(false);
-      }
-    },
-    []
-  );
-
-  /* =========================================================
-     INITIAL LOAD
+     LOAD PROFILE
   ========================================================= */
 
   useEffect(() => {
     let cancelled = false;
 
-    async function initialize() {
+    async function loadProfile() {
       try {
-        /**
-         * -----------------------------------------------------
-         * 1. GET AUTH USER
-         * -----------------------------------------------------
-         */
-
         const {
-          data: { user },
-          error: userError,
+          data: {
+            user,
+          },
+          error:
+            userError,
         } =
           await supabase.auth.getUser();
 
-        if (userError && userError.name !== "AuthSessionMissingError" && !userError.message?.toLowerCase().includes("session")) {
-          console.warn("User session check:", userError.message);
-        }
-
-        if (!user) {
+        if (
+          userError ||
+          !user
+        ) {
           router.push(
             "/auth/login"
           );
@@ -639,36 +998,36 @@ export default function ProfilePage() {
           return;
         }
 
-        setUserId(user.id);
+        setUserId(
+          user.id
+        );
+
         setEmail(
           user.email ?? ""
         );
 
-        /**
-         * -----------------------------------------------------
-         * 2. LOAD PROFILE
-         * -----------------------------------------------------
-         */
-
         const {
-          data: profile,
-          error: profileError,
+          data,
+          error,
         } =
           await supabase
             .from("profiles")
             .select(
               `
-              id,
-              uid,
-              full_name,
-              username,
-              avatar_url,
-              role,
-              organization,
-              city,
-              district,
-              province,
-              bio
+                id,
+                uid,
+                full_name,
+                username,
+                avatar_url,
+                role,
+                organization,
+                city,
+                city_code,
+                district,
+                district_code,
+                province,
+                province_code,
+                bio
               `
             )
             .eq(
@@ -677,28 +1036,32 @@ export default function ProfilePage() {
             )
             .maybeSingle();
 
-        if (profileError) {
+        if (error) {
           console.error(
             "LOAD PROFILE ERROR:",
-            profileError
+            error
           );
 
-          setSaveMessage(
-            "Profile gagal dimuat. Silakan refresh halaman."
-          );
+          if (!cancelled) {
+            setSaveMessage(
+              text.loadProfileError
+            );
+          }
 
           return;
         }
 
-        if (!profile) {
+        if (!data) {
           console.error(
             "PROFILE NOT FOUND:",
             user.id
           );
 
-          setSaveMessage(
-            "Data profile belum tersedia."
-          );
+          if (!cancelled) {
+            setSaveMessage(
+              text.profileNotFound
+            );
+          }
 
           return;
         }
@@ -707,350 +1070,307 @@ export default function ProfilePage() {
           return;
         }
 
-        /**
-         * -----------------------------------------------------
-         * 3. SET PROFILE FORM
-         * -----------------------------------------------------
-         */
+        const loadedProvince =
+          data.province ?? "";
 
-        const profileData: ProfileForm =
-          {
-            full_name:
-              profile.full_name ??
-              "",
+        const loadedCity =
+          data.city ?? "";
 
-            username:
-              profile.username ??
-              "",
+        const loadedDistrict =
+          data.district ?? "";
 
-            province:
-              profile.province ??
-              "",
+        const loadedProvinceCode =
+          data.province_code ??
+          "";
 
-            city:
-              profile.city ??
-              "",
+        const loadedCityCode =
+          data.city_code ??
+          "";
 
-            district:
-              profile.district ??
-              "",
+        const loadedDistrictCode =
+          data.district_code ??
+          "";
 
-            role:
-              profile.role ??
-              "citizen",
-
-            organization:
-              profile.organization ??
-              "",
-
-            bio:
-              profile.bio ??
-              "",
-          };
-
-        setForm(
-          profileData
-        );
-
-        setProfileMeta({
-          uid:
-            profile.uid ??
+        setForm({
+          full_name:
+            data.full_name ??
             "",
 
-          avatar_url:
-            profile.avatar_url ??
+          username:
+            data.username ??
+            "",
+
+          province:
+            loadedProvince,
+
+          province_code:
+            loadedProvinceCode,
+
+          city:
+            loadedCity,
+
+          city_code:
+            loadedCityCode,
+
+          district:
+            loadedDistrict,
+
+          district_code:
+            loadedDistrictCode,
+
+          role:
+            data.role ??
+            "citizen",
+
+          organization:
+            data.organization ??
+            "",
+
+          bio:
+            data.bio ??
             "",
         });
 
-        /**
-         * Query dibuat sama dengan data asli.
-         *
-         * JANGAN uppercase.
-         */
+        setProfileMeta({
+          uid:
+            data.uid ??
+            "",
+
+          avatar_url:
+            data.avatar_url ??
+            "",
+        });
+
         setProvinceQuery(
-          profileData.province
+          loadedProvince
         );
 
         setCityQuery(
-          profileData.city
+          loadedCity
         );
 
         setDistrictQuery(
-          profileData.district
+          loadedDistrict
         );
 
         /**
-         * -----------------------------------------------------
-         * 4. LOAD STUDENT DATA
-         * -----------------------------------------------------
+         * Student data lama:
+         *
+         * "S1 | Universitas Diponegoro"
          */
-
         if (
-          profileData.role ===
+          data.role ===
             "student" &&
-          profileData.organization
+          data.organization
         ) {
           const parts =
-            profileData.organization.split(
+            data.organization.split(
               " | "
             );
 
           if (
-            parts.length >= 2
+            parts.length >=
+            2
           ) {
-            const level =
+            const possibleLevel =
               parts[0];
 
             if (
               STUDENT_LEVELS.includes(
-                level
+                possibleLevel
               )
             ) {
               setStudentLevel(
-                level
+                possibleLevel
               );
             }
           }
         }
 
         /**
-         * -----------------------------------------------------
-         * 5. LOAD RESEARCHER DATA
-         * -----------------------------------------------------
+         * Researcher lama:
+         * jika bio menyimpan:
+         *
+         * Research focus: ...
          */
-
         if (
-          profileData.role ===
+          data.role ===
             "researcher" &&
-          profileData.bio
+          data.bio?.startsWith(
+            "Research focus:"
+          )
         ) {
-          const prefix =
-            "Research focus:";
+          setResearchFocus(
+            data.bio
+              .replace(
+                "Research focus:",
+                ""
+              )
+              .trim()
+          );
+        }
+
+        /**
+         * Kalau other menggunakan
+         * organization sebagai role.
+         */
+        if (
+          data.role ===
+            "other" &&
+          data.organization
+        ) {
+          setOtherRole(
+            data.organization
+          );
+        }
+
+        /**
+         * =====================================================
+         * RESOLVE OLD PROFILE LOCATION
+         * =====================================================
+         *
+         * Profile lama mungkin sudah punya:
+         *
+         * province = "Riau"
+         *
+         * tetapi:
+         *
+         * province_code = ""
+         *
+         * Kita cari code dari nama.
+         */
+        if (
+          loadedProvince &&
+          provinces.length > 0
+        ) {
+          const matchedProvince =
+            findRegionByName(
+              provinces,
+              loadedProvince
+            );
 
           if (
-            profileData.bio.startsWith(
-              prefix
-            )
+            matchedProvince &&
+            !loadedProvinceCode
           ) {
-            setResearchFocus(
-              profileData.bio
-                .replace(
-                  prefix,
-                  ""
-                )
-                .trim()
+            setForm(
+              (previous) => ({
+                ...previous,
+                province_code:
+                  matchedProvince.code,
+              })
             );
           }
-        }
 
-        /**
-         * -----------------------------------------------------
-         * 6. LOAD PROVINCES
-         * -----------------------------------------------------
-         *
-         * Kita sengaja load langsung di sini supaya
-         * proses existing profile tidak bergantung pada
-         * state provinces yang belum selesai.
-         */
+          if (
+            matchedProvince
+          ) {
+            try {
+              const cityData =
+                await fetchRegions(
+                  `/api/regions/regencies/${encodeURIComponent(
+                    matchedProvince.code
+                  )}`
+                );
 
-        const provinceData =
-          await loadProvinces();
+              if (
+                cancelled
+              ) {
+                return;
+              }
 
-        if (cancelled) {
-          return;
-        }
+              setCities(
+                cityData
+              );
 
-        /**
-         * -----------------------------------------------------
-         * 7. MATCH EXISTING PROVINCE
-         * -----------------------------------------------------
-         */
+              const matchedCity =
+                findRegionByName(
+                  cityData,
+                  loadedCity
+                );
 
-        const selectedProvince =
-          findRegionByName(
-            provinceData,
-            profileData.province
-          );
+              if (
+                matchedCity
+              ) {
+                setForm(
+                  (previous) => ({
+                    ...previous,
+                    province_code:
+                      matchedProvince.code,
+                    city_code:
+                      matchedCity.code,
+                  })
+                );
 
-        if (
-          !selectedProvince
-        ) {
-          console.warn(
-            "PROVINCE NOT FOUND:",
-            profileData.province
-          );
+                try {
+                  const districtData =
+                    await fetchRegions(
+                      `/api/regions/districts/${encodeURIComponent(
+                        matchedCity.code
+                      )}`
+                    );
 
-          return;
-        }
+                  if (
+                    cancelled
+                  ) {
+                    return;
+                  }
 
-        setSelectedProvinceCode(
-          selectedProvince.code
-        );
+                  setDistricts(
+                    districtData
+                  );
 
-        /**
-         * -----------------------------------------------------
-         * 8. LOAD EXISTING CITY
-         * -----------------------------------------------------
-         */
+                  const matchedDistrict =
+                    findRegionByName(
+                      districtData,
+                      loadedDistrict
+                    );
 
-        const cityData =
-          await loadCities(
-            selectedProvince.code
-          );
-
-        if (cancelled) {
-          return;
-        }
-
-        /**
-         * -----------------------------------------------------
-         * 9. MATCH EXISTING CITY
-         * -----------------------------------------------------
-         *
-         * Ini bagian penting.
-         *
-         * Database menyimpan:
-         *
-         * "Kota Tebing Tinggi"
-         *
-         * atau
-         *
-         * "Tebing Tinggi"
-         *
-         * API harus dicari berdasarkan nama yang
-         * sudah dinormalisasi.
-         */
-
-        const selectedCity =
-          findRegionByName(
-            cityData,
-            profileData.city
-          );
-
-        if (
-          !selectedCity
-        ) {
-          console.warn(
-            "CITY NOT FOUND:",
-            {
-              savedCity:
-                profileData.city,
-              availableCities:
-                cityData,
+                  if (
+                    matchedDistrict
+                  ) {
+                    setForm(
+                      (previous) => ({
+                        ...previous,
+                        province_code:
+                          matchedProvince.code,
+                        city_code:
+                          matchedCity.code,
+                        district_code:
+                          matchedDistrict.code,
+                      })
+                    );
+                  }
+                } catch (
+                  districtError
+                ) {
+                  console.warn(
+                    "EXISTING DISTRICT RESOLVE FAILED:",
+                    districtError
+                  );
+                }
+              }
+            } catch (
+              cityError
+            ) {
+              console.warn(
+                "EXISTING CITY RESOLVE FAILED:",
+                cityError
+              );
             }
-          );
-
-          return;
+          }
         }
-
-        setSelectedCityCode(
-          selectedCity.code
-        );
-
-        /**
-         * -----------------------------------------------------
-         * 10. LOAD EXISTING DISTRICT
-         * -----------------------------------------------------
-         */
-
-        const districtData =
-          await loadDistricts(
-            selectedCity.code
-          );
-
-        if (cancelled) {
-          return;
-        }
-
-        /**
-         * -----------------------------------------------------
-         * 11. MATCH EXISTING DISTRICT
-         * -----------------------------------------------------
-         */
-
-        const selectedDistrict =
-          findRegionByName(
-            districtData,
-            profileData.district
-          );
-
-        if (
-          !selectedDistrict
-        ) {
-          console.warn(
-            "DISTRICT NOT FOUND:",
-            {
-              savedDistrict:
-                profileData.district,
-              availableDistricts:
-                districtData,
-            }
-          );
-
-          /**
-           * Jangan mengubah value database.
-           *
-           * Tetap tampilkan data yang tersimpan.
-           */
-          return;
-        }
-
-        /**
-         * -----------------------------------------------------
-         * 12. PASTIKAN QUERY MENAMPILKAN NAMA ASLI API
-         * -----------------------------------------------------
-         */
-
-        setProvinceQuery(
-          selectedProvince.name
-        );
-
-        setCityQuery(
-          selectedCity.name
-        );
-
-        setDistrictQuery(
-          selectedDistrict.name
-        );
-
-        /**
-         * Form juga disinkronkan dengan nama API.
-         *
-         * Jadi misalnya API:
-         *
-         * Tebing Tinggi
-         *
-         * maka yang dipakai:
-         *
-         * Tebing Tinggi
-         *
-         * BUKAN:
-         *
-         * TEBING TINGGI
-         */
-        setForm(
-          (previous) => ({
-            ...previous,
-
-            province:
-              selectedProvince.name,
-
-            city:
-              selectedCity.name,
-
-            district:
-              selectedDistrict.name,
-          })
-        );
       } catch (error) {
         console.error(
-          "PROFILE INITIALIZATION ERROR:",
+          "LOAD PROFILE ERROR:",
           error
         );
 
-        setSaveMessage(
-          "Terjadi kesalahan saat memuat profile."
-        );
+        if (!cancelled) {
+          setSaveMessage(
+            text.loadProfileError
+          );
+        }
       } finally {
         if (!cancelled) {
           setLoading(false);
@@ -1058,7 +1378,7 @@ export default function ProfilePage() {
       }
     }
 
-    initialize();
+    void loadProfile();
 
     return () => {
       cancelled = true;
@@ -1066,10 +1386,101 @@ export default function ProfilePage() {
   }, [
     router,
     supabase,
-    loadProvinces,
-    loadCities,
-    loadDistricts,
+    provinces,
+    text.loadProfileError,
+    text.profileNotFound,
   ]);
+
+  /* =========================================================
+     LOAD CITIES
+  ========================================================= */
+
+  async function loadCities(
+    provinceCode: string
+  ) {
+    if (!provinceCode) {
+      setCities([]);
+      return;
+    }
+
+    setLoadingCities(true);
+    setRegionError("");
+
+    try {
+      const cityData =
+        await fetchRegions(
+          `/api/regions/regencies/${encodeURIComponent(
+            provinceCode
+          )}`
+        );
+
+      setCities(
+        cityData
+      );
+    } catch (error) {
+      console.error(
+        "LOAD CITIES ERROR:",
+        error
+      );
+
+      setCities([]);
+
+      setRegionError(
+        text.regionLoadError
+      );
+    } finally {
+      setLoadingCities(
+        false
+      );
+    }
+  }
+
+  /* =========================================================
+     LOAD DISTRICTS
+  ========================================================= */
+
+  async function loadDistricts(
+    cityCode: string
+  ) {
+    if (!cityCode) {
+      setDistricts([]);
+      return;
+    }
+
+    setLoadingDistricts(
+      true
+    );
+
+    setRegionError("");
+
+    try {
+      const districtData =
+        await fetchRegions(
+          `/api/regions/districts/${encodeURIComponent(
+            cityCode.trim()
+          )}`
+        );
+
+      setDistricts(
+        districtData
+      );
+    } catch (error) {
+      console.error(
+        "LOAD DISTRICTS ERROR:",
+        error
+      );
+
+      setDistricts([]);
+
+      setRegionError(
+        text.regionLoadError
+      );
+    } finally {
+      setLoadingDistricts(
+        false
+      );
+    }
+  }
 
   /* =========================================================
      SELECT PROVINCE
@@ -1078,9 +1489,8 @@ export default function ProfilePage() {
   async function selectProvince(
     province: Region
   ) {
-    /**
-     * Simpan nama ASLI.
-     */
+    setRegionError("");
+
     setForm(
       (previous) => ({
         ...previous,
@@ -1088,9 +1498,14 @@ export default function ProfilePage() {
         province:
           province.name,
 
+        province_code:
+          province.code,
+
         city: "",
+        city_code: "",
 
         district: "",
+        district_code: "",
       })
     );
 
@@ -1101,12 +1516,6 @@ export default function ProfilePage() {
     setCityQuery("");
     setDistrictQuery("");
 
-    setSelectedProvinceCode(
-      province.code
-    );
-
-    setSelectedCityCode("");
-
     setCities([]);
     setDistricts([]);
 
@@ -1114,16 +1523,14 @@ export default function ProfilePage() {
       false
     );
 
-    setShowCityOptions(false);
+    setShowCityOptions(
+      false
+    );
 
     setShowDistrictOptions(
       false
     );
 
-    /**
-     * Load kabupaten/kota
-     * berdasarkan CODE provinsi.
-     */
     await loadCities(
       province.code
     );
@@ -1136,16 +1543,20 @@ export default function ProfilePage() {
   async function selectCity(
     city: Region
   ) {
-    /**
-     * Simpan nama ASLI API.
-     */
+    setRegionError("");
+
     setForm(
       (previous) => ({
         ...previous,
 
-        city: city.name,
+        city:
+          city.name,
+
+        city_code:
+          city.code,
 
         district: "",
+        district_code: "",
       })
     );
 
@@ -1154,10 +1565,6 @@ export default function ProfilePage() {
     );
 
     setDistrictQuery("");
-
-    setSelectedCityCode(
-      city.code
-    );
 
     setDistricts([]);
 
@@ -1169,10 +1576,6 @@ export default function ProfilePage() {
       false
     );
 
-    /**
-     * Load kecamatan berdasarkan
-     * CODE kabupaten/kota.
-     */
     await loadDistricts(
       city.code
     );
@@ -1185,15 +1588,17 @@ export default function ProfilePage() {
   function selectDistrict(
     district: Region
   ) {
-    /**
-     * Simpan nama ASLI API.
-     */
+    setRegionError("");
+
     setForm(
       (previous) => ({
         ...previous,
 
         district:
           district.name,
+
+        district_code:
+          district.code,
       })
     );
 
@@ -1207,7 +1612,7 @@ export default function ProfilePage() {
   }
 
   /* =========================================================
-     ROLE
+     ROLE CHANGE
   ========================================================= */
 
   function changeRole(
@@ -1229,54 +1634,6 @@ export default function ProfilePage() {
   }
 
   /* =========================================================
-     ORGANIZATION LABEL
-  ========================================================= */
-
-  function getOrganizationLabel() {
-    switch (form.role) {
-      case "organization":
-        return "Nama Organisasi";
-
-      case "business":
-        return "Nama Bisnis";
-
-      case "community":
-        return "Nama Community";
-
-      case "government":
-        return "Nama Institusi Pemerintahan";
-
-      case "researcher":
-        return "Nama Institusi Penelitian";
-
-      default:
-        return "Organization";
-    }
-  }
-
-  function getOrganizationPlaceholder() {
-    switch (form.role) {
-      case "organization":
-        return "Contoh: Komunitas Peduli Lingkungan";
-
-      case "business":
-        return "Contoh: Arvena Recycling";
-
-      case "community":
-        return "Contoh: Green Community Semarang";
-
-      case "government":
-        return "Contoh: Dinas Lingkungan Hidup";
-
-      case "researcher":
-        return "Contoh: Universitas Diponegoro";
-
-      default:
-        return "";
-    }
-  }
-
-  /* =========================================================
      AVATAR UPLOAD
   ========================================================= */
 
@@ -1286,7 +1643,10 @@ export default function ProfilePage() {
     const file =
       event.target.files?.[0];
 
-    if (!file || !userId) {
+    if (
+      !file ||
+      !userId
+    ) {
       return;
     }
 
@@ -1295,12 +1655,16 @@ export default function ProfilePage() {
     const MAX_SIZE =
       3 * 1024 * 1024;
 
-    if (file.size > MAX_SIZE) {
+    if (
+      file.size >
+      MAX_SIZE
+    ) {
       setAvatarError(
-        "Ukuran foto maksimal 3 MB."
+        text.maxPhoto
       );
 
-      event.target.value = "";
+      event.target.value =
+        "";
 
       return;
     }
@@ -1311,15 +1675,18 @@ export default function ProfilePage() {
       )
     ) {
       setAvatarError(
-        "File harus berupa gambar."
+        text.imageOnly
       );
 
-      event.target.value = "";
+      event.target.value =
+        "";
 
       return;
     }
 
-    setUploadingAvatar(true);
+    setUploadingAvatar(
+      true
+    );
 
     try {
       const extension =
@@ -1333,7 +1700,8 @@ export default function ProfilePage() {
         `${userId}/avatar.${extension}`;
 
       /**
-       * Hapus avatar lama.
+       * Pertahankan bucket existing
+       * ARVENA.
        */
       if (
         profileMeta.avatar_url
@@ -1345,7 +1713,7 @@ export default function ProfilePage() {
             );
 
           const marker =
-            "/storage/v1/object/public/profile-avatars/";
+            "/storage/v1/object/public/avatars/";
 
           const markerIndex =
             oldUrl.pathname.indexOf(
@@ -1353,7 +1721,8 @@ export default function ProfilePage() {
             );
 
           if (
-            markerIndex !== -1
+            markerIndex !==
+            -1
           ) {
             const oldPath =
               decodeURIComponent(
@@ -1364,59 +1733,51 @@ export default function ProfilePage() {
               );
 
             await supabase.storage
-              .from(
-                "profile-avatars"
-              )
+              .from("avatars")
               .remove([
                 oldPath,
               ]);
           }
-        } catch (error) {
+        } catch (
+          removeError
+        ) {
           console.warn(
             "OLD AVATAR REMOVE WARNING:",
-            error
+            removeError
           );
         }
       }
 
-      /**
-       * Upload avatar baru.
-       */
       const {
-        error: uploadError,
+        error:
+          uploadError,
       } =
         await supabase.storage
-          .from(
-            "profile-avatars"
-          )
+          .from("avatars")
           .upload(
             filePath,
             file,
             {
               upsert: true,
-
               contentType:
                 file.type,
-
               cacheControl:
                 "3600",
             }
           );
 
-      if (uploadError) {
+      if (
+        uploadError
+      ) {
         throw uploadError;
       }
 
-      /**
-       * Public URL.
-       */
       const {
-        data: publicUrlData,
+        data:
+          publicUrlData,
       } =
         supabase.storage
-          .from(
-            "profile-avatars"
-          )
+          .from("avatars")
           .getPublicUrl(
             filePath
           );
@@ -1424,11 +1785,9 @@ export default function ProfilePage() {
       const avatarUrl =
         publicUrlData.publicUrl;
 
-      /**
-       * Update database.
-       */
       const {
-        error: updateError,
+        error:
+          updateError,
       } =
         await supabase
           .from("profiles")
@@ -1441,7 +1800,9 @@ export default function ProfilePage() {
             userId
           );
 
-      if (updateError) {
+      if (
+        updateError
+      ) {
         throw updateError;
       }
 
@@ -1455,7 +1816,7 @@ export default function ProfilePage() {
       );
 
       setSaveMessage(
-        "Foto profil berhasil diperbarui."
+        text.avatarUpdated
       );
     } catch (error) {
       console.error(
@@ -1466,17 +1827,20 @@ export default function ProfilePage() {
       setAvatarError(
         error instanceof Error
           ? error.message
-          : "Foto profil gagal diupload."
+          : text.saveError
       );
     } finally {
-      setUploadingAvatar(false);
+      setUploadingAvatar(
+        false
+      );
 
-      event.target.value = "";
+      event.target.value =
+        "";
     }
   }
 
   /* =========================================================
-     REQUIRED PROFILE
+     REQUIRED PROFILE CHECK
   ========================================================= */
 
   const requiredFieldsComplete =
@@ -1484,8 +1848,11 @@ export default function ProfilePage() {
       form.full_name.trim() &&
         form.username.trim() &&
         form.province.trim() &&
+        form.province_code.trim() &&
         form.city.trim() &&
+        form.city_code.trim() &&
         form.district.trim() &&
+        form.district_code.trim() &&
         form.role.trim()
     ) &&
     (
@@ -1572,28 +1939,31 @@ export default function ProfilePage() {
               : [
                   form.organization.trim(),
                 ]),
-    ].filter(Boolean).length;
+    ].filter(Boolean)
+      .length;
 
   /* =========================================================
      SAVE PROFILE
   ========================================================= */
 
   async function saveProfile(
-    e: React.FormEvent
+    event: React.FormEvent
   ) {
-    e.preventDefault();
+    event.preventDefault();
 
     if (!userId) {
       setSaveMessage(
-        "User belum terdeteksi. Silakan refresh halaman."
+        text.userNotDetected
       );
 
       return;
     }
 
-    if (!requiredFieldsComplete) {
+    if (
+      !requiredFieldsComplete
+    ) {
       setSaveMessage(
-        "Lengkapi semua informasi wajib terlebih dahulu."
+        text.requiredIncomplete
       );
 
       return;
@@ -1603,15 +1973,15 @@ export default function ProfilePage() {
     setSaveMessage("");
 
     try {
-      /**
-       * -----------------------------------------------------
-       * ORGANIZATION
-       * -----------------------------------------------------
-       */
-
       let organizationValue =
         form.organization.trim();
 
+      /**
+       * Student:
+       * organization =
+       *
+       * "S1 | Universitas Diponegoro"
+       */
       if (
         form.role ===
         "student"
@@ -1621,11 +1991,10 @@ export default function ProfilePage() {
       }
 
       /**
-       * -----------------------------------------------------
-       * RESEARCHER
-       * -----------------------------------------------------
+       * Researcher:
+       * jika bio kosong, simpan
+       * research focus di bio.
        */
-
       let bioValue =
         form.bio.trim();
 
@@ -1640,11 +2009,10 @@ export default function ProfilePage() {
       }
 
       /**
-       * -----------------------------------------------------
-       * OTHER
-       * -----------------------------------------------------
+       * Other:
+       * organization dipakai untuk
+       * menyimpan peran custom.
        */
-
       if (
         form.role ===
         "other"
@@ -1652,25 +2020,6 @@ export default function ProfilePage() {
         organizationValue =
           otherRole.trim();
       }
-
-      /**
-       * -----------------------------------------------------
-       * SAVE
-       * -----------------------------------------------------
-       *
-       * Region disimpan menggunakan value ASLI:
-       *
-       * province:
-       * "Sumatera Utara"
-       *
-       * city:
-       * "Tebing Tinggi"
-       *
-       * district:
-       * "Padang Hilir"
-       *
-       * Tidak ada uppercase.
-       */
 
       const {
         error,
@@ -1687,11 +2036,20 @@ export default function ProfilePage() {
             province:
               form.province.trim(),
 
+            province_code:
+              form.province_code.trim(),
+
             city:
               form.city.trim(),
 
+            city_code:
+              form.city_code.trim(),
+
             district:
               form.district.trim(),
+
+            district_code:
+              form.district_code.trim(),
 
             role:
               form.role,
@@ -1733,7 +2091,7 @@ export default function ProfilePage() {
       );
 
       setSaveMessage(
-        "Profile berhasil disimpan."
+        text.saveSuccess
       );
 
       router.refresh();
@@ -1744,7 +2102,7 @@ export default function ProfilePage() {
       );
 
       setSaveMessage(
-        "Terjadi kesalahan saat menyimpan profile."
+        text.saveError
       );
     } finally {
       setSaving(false);
@@ -1795,7 +2153,7 @@ export default function ProfilePage() {
     );
 
   /* =========================================================
-     PROFILE DISPLAY
+     DISPLAY
   ========================================================= */
 
   const initials =
@@ -1810,24 +2168,24 @@ export default function ProfilePage() {
     "ARVENA User";
 
   const displayRole =
-    getRoleLabel(
+    text.roleName(
       form.role
     );
 
   /* =========================================================
-     LOADING SCREEN
+     LOADING
   ========================================================= */
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-[#092328] px-6 py-12 text-white">
+      <main className="min-h-screen bg-[#07130f] px-4 py-10 text-white sm:px-6 md:py-14">
         <div className="mx-auto max-w-4xl">
           <div className="animate-pulse">
             <div className="h-4 w-32 rounded bg-white/10" />
 
             <div className="mt-4 h-10 w-64 rounded bg-white/10" />
 
-            <div className="mt-3 h-4 w-80 rounded bg-white/5" />
+            <div className="mt-3 h-4 w-80 max-w-full rounded bg-white/5" />
 
             <div className="mt-10 h-[700px] rounded-3xl border border-white/10 bg-white/[0.03]" />
           </div>
@@ -1841,20 +2199,14 @@ export default function ProfilePage() {
   ========================================================= */
 
   return (
-    <main className="relative min-h-screen bg-[#092328] px-6 py-10 text-white md:py-14 overflow-hidden">
-      {/* Atmospheric beam */}
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute -top-24 -left-24 h-[550px] w-[550px] rounded-full opacity-20"
-        style={{ background: "radial-gradient(circle at 30% 30%, #2A835F 0%, transparent 70%)" }}
-      />
+    <main className="min-h-screen bg-[#07130f] px-4 py-8 text-white sm:px-6 md:py-12">
       <div className="mx-auto max-w-4xl">
 
         {/* =================================================
             PROFILE HEADER
         ================================================= */}
 
-        <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-white/[0.03] p-6 md:p-8">
+        <section className="relative overflow-hidden rounded-3xl border border-white/10 bg-white/[0.03] p-5 sm:p-6 md:p-8">
 
           <div className="pointer-events-none absolute -right-20 -top-20 h-56 w-56 rounded-full bg-emerald-400/10 blur-3xl" />
 
@@ -1862,7 +2214,7 @@ export default function ProfilePage() {
 
             {/* AVATAR */}
 
-            <div className="flex shrink-0 flex-col items-center">
+            <div className="relative shrink-0">
 
               {profileMeta.avatar_url ? (
                 <img
@@ -1878,14 +2230,15 @@ export default function ProfilePage() {
                 </div>
               )}
 
-              <label className="mt-3 cursor-pointer rounded-lg border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs font-medium text-emerald-300 transition hover:border-emerald-300/20 hover:bg-emerald-400/10">
+              <label className="absolute -bottom-2 -right-2 cursor-pointer rounded-full border border-white/10 bg-[#0b1b15] px-3 py-1.5 text-xs font-medium text-emerald-300 shadow-lg transition hover:bg-emerald-400/10">
+
                 {uploadingAvatar
-                  ? "Uploading..."
-                  : "Change"}
+                  ? "..."
+                  : text.avatarChange}
 
                 <input
                   type="file"
-                  accept="image/jpeg,image/png,image/webp"
+                  accept="image/*"
                   onChange={
                     handleAvatarUpload
                   }
@@ -1894,6 +2247,7 @@ export default function ProfilePage() {
                   }
                   className="hidden"
                 />
+
               </label>
 
             </div>
@@ -1911,10 +2265,8 @@ export default function ProfilePage() {
                 {form.organization &&
                   form.role !==
                     "student" && (
-                    <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-white/40">
-                      {
-                        form.organization
-                      }
+                    <span className="max-w-full truncate rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-white/40">
+                      {form.organization}
                     </span>
                   )}
 
@@ -1927,15 +2279,14 @@ export default function ProfilePage() {
               <p className="mt-1 text-sm text-white/50">
                 {form.username
                   ? `@${form.username}`
-                  : "Username belum diatur"}
+                  : isEnglish
+                    ? "Username not set"
+                    : "Username belum diatur"}
               </p>
 
               {profileMeta.uid && (
                 <p className="mt-1 text-xs font-medium tracking-[0.12em] text-emerald-300/70">
-                  UID{" "}
-                  {
-                    profileMeta.uid
-                  }
+                  UID {profileMeta.uid}
                 </p>
               )}
 
@@ -1951,30 +2302,9 @@ export default function ProfilePage() {
 
             </div>
 
-            {/* LOG OUT BUTTON (HEADER) */}
-            <div className="sm:ml-auto self-start sm:self-center">
-              <button
-                type="button"
-                onClick={handleSignOut}
-                disabled={signingOut}
-                className="inline-flex items-center gap-2 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-2.5 text-xs font-semibold text-red-300 transition hover:bg-red-500/20 hover:border-red-500/40 disabled:opacity-50"
-              >
-                <LogOut className="h-3.5 w-3.5" />
-                <span>
-                  {signingOut
-                    ? locale === "id"
-                      ? "Keluar..."
-                      : "Logging out..."
-                    : locale === "id"
-                      ? "Keluar"
-                      : "Log Out"}
-                </span>
-              </button>
-            </div>
-
           </div>
 
-        </div>
+        </section>
 
         {/* =================================================
             TITLE
@@ -1983,23 +2313,21 @@ export default function ProfilePage() {
         <div className="mt-10">
 
           <p className="text-sm font-medium text-emerald-300">
-            ARVENA PROFILE
+            {text.profileLabel}
           </p>
 
-          <h2 className="mt-2 text-3xl font-semibold tracking-tight">
-            Your Profile
+          <h2 className="mt-2 text-3xl font-semibold tracking-tight md:text-4xl">
+            {text.profileTitle}
           </h2>
 
           <p className="mt-2 max-w-2xl text-sm leading-6 text-white/40">
-            Kelola informasi profil dan lokasi
-            kamu untuk membangun koneksi yang
-            lebih relevan di ekosistem ARVENA.
+            {text.profileDescription}
           </p>
 
         </div>
 
         {/* =================================================
-            PROFILE COMPLETENESS
+            COMPLETENESS
         ================================================= */}
 
         {!requiredFieldsComplete ? (
@@ -2008,27 +2336,18 @@ export default function ProfilePage() {
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 
               <div>
-
                 <p className="text-sm font-medium text-yellow-200">
-                  Lengkapi profile kamu
+                  {text.completeTitle}
                 </p>
 
-                <p className="mt-1 text-xs text-yellow-200/50">
-                  Data wajib diperlukan sebelum
-                  kamu dapat melakukan aktivitas
-                  tertentu seperti menawarkan resource.
+                <p className="mt-1 text-xs leading-5 text-yellow-200/50">
+                  {text.completeDescription}
                 </p>
-
               </div>
 
               <div className="shrink-0 text-sm font-semibold text-yellow-200">
-                {
-                  completedRequiredCount
-                }
-                /
-                {
-                  requiredFieldCount
-                }
+                {completedRequiredCount}/
+                {requiredFieldCount}
               </div>
 
             </div>
@@ -2038,12 +2357,11 @@ export default function ProfilePage() {
           <div className="mt-6 rounded-2xl border border-emerald-400/20 bg-emerald-400/5 px-4 py-3">
 
             <p className="text-sm font-medium text-emerald-300">
-              Profile lengkap ✓
+              {text.completeStatus}
             </p>
 
             <p className="mt-1 text-xs text-emerald-300/50">
-              Semua informasi wajib sudah
-              dilengkapi.
+              {text.completeStatusDescription}
             </p>
 
           </div>
@@ -2054,7 +2372,7 @@ export default function ProfilePage() {
         ================================================= */}
 
         {regionError && (
-          <div className="mt-6 rounded-2xl border border-yellow-400/20 bg-yellow-400/5 px-4 py-3 text-sm text-yellow-200/80">
+          <div className="mt-6 rounded-2xl border border-yellow-400/20 bg-yellow-400/5 px-4 py-3 text-sm leading-5 text-yellow-200/80">
             {regionError}
           </div>
         )}
@@ -2074,21 +2392,20 @@ export default function ProfilePage() {
               IDENTITY
           ================================================= */}
 
-          <section className="rounded-3xl border border-white/10 bg-white/[0.03] p-6 md:p-8">
+          <section className="rounded-3xl border border-white/10 bg-white/[0.03] p-5 sm:p-6 md:p-8">
 
             <div className="mb-6">
 
               <p className="text-xs font-medium uppercase tracking-[0.2em] text-emerald-300/70">
-                Identity
+                {text.identity}
               </p>
 
               <h3 className="mt-2 text-xl font-semibold">
-                Personal Information
+                {text.personalInformation}
               </h3>
 
-              <p className="mt-1 text-sm text-white/35">
-                Informasi dasar yang digunakan
-                pada profil ARVENA kamu.
+              <p className="mt-1 text-sm leading-6 text-white/35">
+                {text.personalDescription}
               </p>
 
             </div>
@@ -2100,7 +2417,7 @@ export default function ProfilePage() {
               <div>
 
                 <label className="mb-2 block text-sm text-white/60">
-                  Full Name
+                  {text.fullName}
                   <span className="ml-1 text-emerald-300">
                     *
                   </span>
@@ -2110,17 +2427,22 @@ export default function ProfilePage() {
                   value={
                     form.full_name
                   }
-                  onChange={(e) =>
-                    setForm({
-                      ...form,
-
-                      full_name:
-                        e.target.value,
-                    })
+                  onChange={(event) =>
+                    setForm(
+                      (previous) => ({
+                        ...previous,
+                        full_name:
+                          event.target.value,
+                      })
+                    )
                   }
                   required
                   className="w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 outline-none transition focus:border-emerald-400"
-                  placeholder="Nama lengkap"
+                  placeholder={
+                    isEnglish
+                      ? "Your full name"
+                      : "Nama lengkap"
+                  }
                 />
 
               </div>
@@ -2130,7 +2452,7 @@ export default function ProfilePage() {
               <div>
 
                 <label className="mb-2 block text-sm text-white/60">
-                  Username
+                  {text.username}
                   <span className="ml-1 text-emerald-300">
                     *
                   </span>
@@ -2146,16 +2468,17 @@ export default function ProfilePage() {
                     value={
                       form.username
                     }
-                    onChange={(e) =>
-                      setForm({
-                        ...form,
-
-                        username:
-                          e.target.value.replace(
-                            /\s/g,
-                            ""
-                          ),
-                      })
+                    onChange={(event) =>
+                      setForm(
+                        (previous) => ({
+                          ...previous,
+                          username:
+                            event.target.value.replace(
+                              /\s/g,
+                              ""
+                            ),
+                        })
+                      )
                     }
                     required
                     className="w-full rounded-xl border border-white/10 bg-black/20 py-3 pl-9 pr-4 outline-none transition focus:border-emerald-400"
@@ -2164,9 +2487,8 @@ export default function ProfilePage() {
 
                 </div>
 
-                <p className="mt-2 text-xs text-white/25">
-                  Username digunakan sebagai
-                  identitas singkat di ARVENA.
+                <p className="mt-2 text-xs leading-5 text-white/25">
+                  {text.usernameHint}
                 </p>
 
               </div>
@@ -2176,7 +2498,7 @@ export default function ProfilePage() {
               <div className="md:col-span-2">
 
                 <label className="mb-2 block text-sm text-white/60">
-                  Role
+                  {text.role}
                   <span className="ml-1 text-emerald-300">
                     *
                   </span>
@@ -2186,14 +2508,15 @@ export default function ProfilePage() {
                   value={
                     form.role
                   }
-                  onChange={(e) =>
+                  onChange={(event) =>
                     changeRole(
-                      e.target.value
+                      event.target.value
                     )
                   }
                   required
                   className="w-full rounded-xl border border-white/10 bg-[#0b1c16] px-4 py-3 outline-none transition focus:border-emerald-400"
                 >
+
                   {ROLES.map(
                     (role) => (
                       <option
@@ -2204,12 +2527,13 @@ export default function ProfilePage() {
                           role.value
                         }
                       >
-                        {
-                          role.label
-                        }
+                        {isEnglish
+                          ? role.en
+                          : role.id}
                       </option>
                     )
                   )}
+
                 </select>
 
               </div>
@@ -2222,7 +2546,7 @@ export default function ProfilePage() {
                   <div>
 
                     <label className="mb-2 block text-sm text-white/60">
-                      Jenjang Pendidikan
+                      {text.educationLevel}
                       <span className="ml-1 text-emerald-300">
                         *
                       </span>
@@ -2232,9 +2556,9 @@ export default function ProfilePage() {
                       value={
                         studentLevel
                       }
-                      onChange={(e) =>
+                      onChange={(event) =>
                         setStudentLevel(
-                          e.target.value
+                          event.target.value
                         )
                       }
                       required
@@ -2242,7 +2566,7 @@ export default function ProfilePage() {
                     >
 
                       <option value="">
-                        Pilih jenjang
+                        {text.chooseLevel}
                       </option>
 
                       {STUDENT_LEVELS.map(
@@ -2267,7 +2591,7 @@ export default function ProfilePage() {
                   <div>
 
                     <label className="mb-2 block text-sm text-white/60">
-                      Nama Sekolah / Kampus
+                      {text.school}
                       <span className="ml-1 text-emerald-300">
                         *
                       </span>
@@ -2277,18 +2601,20 @@ export default function ProfilePage() {
                       value={
                         form.organization
                       }
-                      onChange={(e) =>
-                        setForm({
-                          ...form,
-
-                          organization:
-                            e.target
-                              .value,
-                        })
+                      onChange={(event) =>
+                        setForm(
+                          (previous) => ({
+                            ...previous,
+                            organization:
+                              event.target.value,
+                          })
+                        )
                       }
                       required
                       className="w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 outline-none transition focus:border-emerald-400"
-                      placeholder="Contoh: Universitas Diponegoro"
+                      placeholder={
+                        text.schoolPlaceholder
+                      }
                     />
 
                   </div>
@@ -2308,10 +2634,9 @@ export default function ProfilePage() {
                 <div className="md:col-span-2">
 
                   <label className="mb-2 block text-sm text-white/60">
-                    {
-                      getOrganizationLabel()
-                    }
-
+                    {text.orgLabel(
+                      form.role
+                    )}
                     <span className="ml-1 text-emerald-300">
                       *
                     </span>
@@ -2321,19 +2646,21 @@ export default function ProfilePage() {
                     value={
                       form.organization
                     }
-                    onChange={(e) =>
-                      setForm({
-                        ...form,
-
-                        organization:
-                          e.target
-                            .value,
-                      })
+                    onChange={(event) =>
+                      setForm(
+                        (previous) => ({
+                          ...previous,
+                          organization:
+                            event.target.value,
+                        })
+                      )
                     }
                     required
                     className="w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 outline-none transition focus:border-emerald-400"
                     placeholder={
-                      getOrganizationPlaceholder()
+                      text.orgPlaceholder(
+                        form.role
+                      )
                     }
                   />
 
@@ -2348,7 +2675,7 @@ export default function ProfilePage() {
                   <div>
 
                     <label className="mb-2 block text-sm text-white/60">
-                      Nama Institusi Penelitian
+                      {text.researchInstitution}
                       <span className="ml-1 text-emerald-300">
                         *
                       </span>
@@ -2358,18 +2685,20 @@ export default function ProfilePage() {
                       value={
                         form.organization
                       }
-                      onChange={(e) =>
-                        setForm({
-                          ...form,
-
-                          organization:
-                            e.target
-                              .value,
-                        })
+                      onChange={(event) =>
+                        setForm(
+                          (previous) => ({
+                            ...previous,
+                            organization:
+                              event.target.value,
+                          })
+                        )
                       }
                       required
                       className="w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 outline-none transition focus:border-emerald-400"
-                      placeholder="Contoh: Universitas Diponegoro"
+                      placeholder={
+                        text.schoolPlaceholder
+                      }
                     />
 
                   </div>
@@ -2377,7 +2706,7 @@ export default function ProfilePage() {
                   <div>
 
                     <label className="mb-2 block text-sm text-white/60">
-                      Fokus Penelitian
+                      {text.researchFocus}
                       <span className="ml-1 text-emerald-300">
                         *
                       </span>
@@ -2387,15 +2716,16 @@ export default function ProfilePage() {
                       value={
                         researchFocus
                       }
-                      onChange={(e) =>
+                      onChange={(event) =>
                         setResearchFocus(
-                          e.target
-                            .value
+                          event.target.value
                         )
                       }
                       required
                       className="w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 outline-none transition focus:border-emerald-400"
-                      placeholder="Contoh: Circular economy dan waste management"
+                      placeholder={
+                        text.researchPlaceholder
+                      }
                     />
 
                   </div>
@@ -2409,7 +2739,7 @@ export default function ProfilePage() {
                 <div className="md:col-span-2">
 
                   <label className="mb-2 block text-sm text-white/60">
-                    Jelaskan peran kamu
+                    {text.otherRole}
                     <span className="ml-1 text-emerald-300">
                       *
                     </span>
@@ -2419,15 +2749,16 @@ export default function ProfilePage() {
                     value={
                       otherRole
                     }
-                    onChange={(e) =>
+                    onChange={(event) =>
                       setOtherRole(
-                        e.target
-                          .value
+                        event.target.value
                       )
                     }
                     required
                     className="w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 outline-none transition focus:border-emerald-400"
-                    placeholder="Contoh: Waste collector"
+                    placeholder={
+                      text.otherRolePlaceholder
+                    }
                   />
 
                 </div>
@@ -2441,22 +2772,20 @@ export default function ProfilePage() {
               LOCATION
           ================================================= */}
 
-          <section className="rounded-3xl border border-white/10 bg-white/[0.03] p-6 md:p-8">
+          <section className="rounded-3xl border border-white/10 bg-white/[0.03] p-5 sm:p-6 md:p-8">
 
             <div className="mb-6">
 
               <p className="text-xs font-medium uppercase tracking-[0.2em] text-emerald-300/70">
-                Location
+                {text.location}
               </p>
 
               <h3 className="mt-2 text-xl font-semibold">
-                Your Location
+                {text.yourLocation}
               </h3>
 
-              <p className="mt-1 text-sm text-white/35">
-                Tentukan wilayah kamu agar
-                aktivitas dan koneksi di ARVENA
-                lebih relevan.
+              <p className="mt-1 text-sm leading-6 text-white/35">
+                {text.locationDescription}
               </p>
 
             </div>
@@ -2470,7 +2799,7 @@ export default function ProfilePage() {
               <div className="relative">
 
                 <label className="mb-2 block text-sm text-white/60">
-                  Provinsi
+                  {text.province}
                   <span className="ml-1 text-emerald-300">
                     *
                   </span>
@@ -2480,19 +2809,19 @@ export default function ProfilePage() {
                   value={
                     provinceQuery
                   }
-                  onChange={(e) => {
+                  onChange={(event) => {
                     const value =
-                      e.target.value;
+                      event.target.value;
 
                     setProvinceQuery(
                       value
                     );
 
                     /**
-                     * Jika user mengubah
-                     * isi province secara manual,
-                     * selection sebelumnya dianggap
-                     * batal.
+                     * Ketika user mengubah
+                     * query dari province yang
+                     * sudah dipilih, reset
+                     * child hierarchy.
                      */
                     if (
                       normalizeSearch(
@@ -2507,27 +2836,20 @@ export default function ProfilePage() {
                           ...previous,
 
                           province: "",
+                          province_code: "",
 
                           city: "",
+                          city_code: "",
 
                           district: "",
+                          district_code: "",
                         })
                       );
 
-                      setSelectedProvinceCode(
-                        ""
-                      );
-
-                      setSelectedCityCode(
-                        ""
-                      );
-
                       setCities([]);
-
                       setDistricts([]);
 
                       setCityQuery("");
-
                       setDistrictQuery("");
                     }
 
@@ -2541,18 +2863,20 @@ export default function ProfilePage() {
                     )
                   }
                   onBlur={() => {
-                    setTimeout(() => {
-                      setShowProvinceOptions(
-                        false
-                      );
-                    }, 150);
+                    setTimeout(
+                      () =>
+                        setShowProvinceOptions(
+                          false
+                        ),
+                      180
+                    );
                   }}
                   required
                   className="w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 outline-none transition focus:border-emerald-400"
                   placeholder={
                     loadingProvinces
-                      ? "Memuat provinsi..."
-                      : "Cari provinsi..."
+                      ? text.loadingProvince
+                      : text.searchProvince
                   }
                 />
 
@@ -2566,17 +2890,17 @@ export default function ProfilePage() {
                           province
                         ) => (
                           <button
-                            type="button"
                             key={
                               province.code
                             }
+                            type="button"
                             onMouseDown={(
-                              e
+                              event
                             ) =>
-                              e.preventDefault()
+                              event.preventDefault()
                             }
                             onClick={() =>
-                              selectProvince(
+                              void selectProvince(
                                 province
                               )
                             }
@@ -2598,7 +2922,7 @@ export default function ProfilePage() {
                   filteredProvinces.length ===
                     0 && (
                     <div className="absolute left-0 right-0 top-full z-50 mt-2 rounded-2xl border border-white/10 bg-[#0b1b15] p-4 text-sm text-white/40 shadow-2xl">
-                      Provinsi tidak ditemukan.
+                      {text.provinceNotFound}
                     </div>
                   )}
 
@@ -2611,7 +2935,7 @@ export default function ProfilePage() {
               <div className="relative">
 
                 <label className="mb-2 block text-sm text-white/60">
-                  Kabupaten / Kota
+                  {text.city}
                   <span className="ml-1 text-emerald-300">
                     *
                   </span>
@@ -2622,21 +2946,16 @@ export default function ProfilePage() {
                     cityQuery
                   }
                   disabled={
-                    !form.province
+                    !form.province_code
                   }
-                  onChange={(e) => {
+                  onChange={(event) => {
                     const value =
-                      e.target.value;
+                      event.target.value;
 
                     setCityQuery(
                       value
                     );
 
-                    /**
-                     * Kalau user mengubah city
-                     * manual, city code lama
-                     * harus dihapus.
-                     */
                     if (
                       normalizeSearch(
                         value
@@ -2650,17 +2969,14 @@ export default function ProfilePage() {
                           ...previous,
 
                           city: "",
+                          city_code: "",
 
                           district: "",
+                          district_code: "",
                         })
                       );
 
-                      setSelectedCityCode(
-                        ""
-                      );
-
                       setDistrictQuery("");
-
                       setDistricts([]);
                     }
 
@@ -2674,47 +2990,53 @@ export default function ProfilePage() {
                     )
                   }
                   onBlur={() => {
-                    setTimeout(() => {
-                      setShowCityOptions(
-                        false
-                      );
-                    }, 150);
+                    setTimeout(
+                      () =>
+                        setShowCityOptions(
+                          false
+                        ),
+                      180
+                    );
                   }}
                   required
                   className="w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 outline-none transition focus:border-emerald-400 disabled:cursor-not-allowed disabled:opacity-40"
                   placeholder={
-                    form.province
-                      ? "Cari kabupaten atau kota..."
-                      : "Pilih provinsi terlebih dahulu"
+                    !form.province_code
+                      ? text.chooseProvinceFirst
+                      : loadingCities
+                        ? text.loadingCity
+                        : text.searchCity
                   }
                 />
 
                 {loadingCities && (
                   <p className="mt-2 text-xs text-white/30">
-                    Memuat kabupaten/kota...
+                    {text.loadingCity}
                   </p>
                 )}
 
                 {showCityOptions &&
-                  form.province &&
+                  form.province_code &&
                   filteredCities.length >
                     0 && (
                     <div className="absolute left-0 right-0 top-full z-40 mt-2 max-h-72 overflow-y-auto rounded-2xl border border-white/10 bg-[#0b1b15] p-2 shadow-2xl">
 
                       {filteredCities.map(
-                        (city) => (
+                        (
+                          city
+                        ) => (
                           <button
-                            type="button"
                             key={
                               city.code
                             }
+                            type="button"
                             onMouseDown={(
-                              e
+                              event
                             ) =>
-                              e.preventDefault()
+                              event.preventDefault()
                             }
                             onClick={() =>
-                              selectCity(
+                              void selectCity(
                                 city
                               )
                             }
@@ -2731,13 +3053,13 @@ export default function ProfilePage() {
                   )}
 
                 {showCityOptions &&
-                  form.province &&
+                  form.province_code &&
                   !loadingCities &&
                   cityQuery &&
                   filteredCities.length ===
                     0 && (
                     <div className="absolute left-0 right-0 top-full z-40 mt-2 rounded-2xl border border-white/10 bg-[#0b1b15] p-4 text-sm text-white/40 shadow-2xl">
-                      Kabupaten/kota tidak ditemukan.
+                      {text.cityNotFound}
                     </div>
                   )}
 
@@ -2750,7 +3072,7 @@ export default function ProfilePage() {
               <div className="relative">
 
                 <label className="mb-2 block text-sm text-white/60">
-                  Kecamatan
+                  {text.district}
                   <span className="ml-1 text-emerald-300">
                     *
                   </span>
@@ -2761,11 +3083,11 @@ export default function ProfilePage() {
                     districtQuery
                   }
                   disabled={
-                    !form.city
+                    !form.city_code
                   }
-                  onChange={(e) => {
+                  onChange={(event) => {
                     const value =
-                      e.target.value;
+                      event.target.value;
 
                     setDistrictQuery(
                       value
@@ -2784,6 +3106,7 @@ export default function ProfilePage() {
                           ...previous,
 
                           district: "",
+                          district_code: "",
                         })
                       );
                     }
@@ -2798,29 +3121,33 @@ export default function ProfilePage() {
                     )
                   }
                   onBlur={() => {
-                    setTimeout(() => {
-                      setShowDistrictOptions(
-                        false
-                      );
-                    }, 150);
+                    setTimeout(
+                      () =>
+                        setShowDistrictOptions(
+                          false
+                        ),
+                      180
+                    );
                   }}
                   required
                   className="w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 outline-none transition focus:border-emerald-400 disabled:cursor-not-allowed disabled:opacity-40"
                   placeholder={
-                    form.city
-                      ? "Cari kecamatan..."
-                      : "Pilih kabupaten/kota terlebih dahulu"
+                    !form.city_code
+                      ? text.chooseCityFirst
+                      : loadingDistricts
+                        ? text.loadingDistrict
+                        : text.searchDistrict
                   }
                 />
 
                 {loadingDistricts && (
                   <p className="mt-2 text-xs text-white/30">
-                    Memuat kecamatan...
+                    {text.loadingDistrict}
                   </p>
                 )}
 
                 {showDistrictOptions &&
-                  form.city &&
+                  form.city_code &&
                   filteredDistricts.length >
                     0 && (
                     <div className="absolute left-0 right-0 top-full z-30 mt-2 max-h-72 overflow-y-auto rounded-2xl border border-white/10 bg-[#0b1b15] p-2 shadow-2xl">
@@ -2830,14 +3157,14 @@ export default function ProfilePage() {
                           district
                         ) => (
                           <button
-                            type="button"
                             key={
                               district.code
                             }
+                            type="button"
                             onMouseDown={(
-                              e
+                              event
                             ) =>
-                              e.preventDefault()
+                              event.preventDefault()
                             }
                             onClick={() =>
                               selectDistrict(
@@ -2857,13 +3184,13 @@ export default function ProfilePage() {
                   )}
 
                 {showDistrictOptions &&
-                  form.city &&
+                  form.city_code &&
                   !loadingDistricts &&
                   districtQuery &&
                   filteredDistricts.length ===
                     0 && (
                     <div className="absolute left-0 right-0 top-full z-30 mt-2 rounded-2xl border border-white/10 bg-[#0b1b15] p-4 text-sm text-white/40 shadow-2xl">
-                      Kecamatan tidak ditemukan.
+                      {text.districtNotFound}
                     </div>
                   )}
 
@@ -2877,22 +3204,20 @@ export default function ProfilePage() {
               ABOUT
           ================================================= */}
 
-          <section className="rounded-3xl border border-white/10 bg-white/[0.03] p-6 md:p-8">
+          <section className="rounded-3xl border border-white/10 bg-white/[0.03] p-5 sm:p-6 md:p-8">
 
             <div className="mb-6">
 
               <p className="text-xs font-medium uppercase tracking-[0.2em] text-emerald-300/70">
-                About
+                {text.about}
               </p>
 
               <h3 className="mt-2 text-xl font-semibold">
-                About You
+                {text.aboutYou}
               </h3>
 
-              <p className="mt-1 text-sm text-white/35">
-                Ceritakan sedikit tentang dirimu
-                dan kontribusimu di ekosistem
-                ARVENA.
+              <p className="mt-1 text-sm leading-6 text-white/35">
+                {text.aboutDescription}
               </p>
 
             </div>
@@ -2901,20 +3226,24 @@ export default function ProfilePage() {
               value={
                 form.bio
               }
-              onChange={(e) =>
-                setForm({
-                  ...form,
-
-                  bio: e.target.value,
-                })
+              onChange={(event) =>
+                setForm(
+                  (previous) => ({
+                    ...previous,
+                    bio:
+                      event.target.value,
+                  })
+                )
               }
               rows={6}
               className="w-full resize-none rounded-xl border border-white/10 bg-black/20 px-4 py-3 leading-6 outline-none transition focus:border-emerald-400"
-              placeholder="Contoh: Saya mahasiswa yang tertarik pada circular economy, teknologi lingkungan, dan pengembangan kota berkelanjutan..."
+              placeholder={
+                text.bioPlaceholder
+              }
             />
 
             <p className="mt-2 text-xs text-white/25">
-              Bio bersifat opsional.
+              {text.bioOptional}
             </p>
 
           </section>
@@ -2929,46 +3258,30 @@ export default function ProfilePage() {
 
               <p className="text-sm font-medium text-white/70">
                 {requiredFieldsComplete
-                  ? "Profile kamu sudah lengkap"
-                  : "Lengkapi profile terlebih dahulu"}
+                  ? text.profileReady
+                  : text.profileIncomplete}
               </p>
 
-              <p className="mt-1 text-xs text-white/30">
+              <p className="mt-1 max-w-2xl text-xs leading-5 text-white/30">
                 {requiredFieldsComplete
-                  ? "Informasi wajib sudah tersedia dan profile siap digunakan."
-                  : "Nama, username, role, dan lokasi wajib diisi. Bio dan foto profil bersifat opsional."}
+                  ? text.profileReadyDescription
+                  : text.profileIncompleteDescription}
               </p>
 
             </div>
 
-            <div className="flex items-center gap-3">
-              <button
-                type="button"
-                onClick={handleSignOut}
-                disabled={signingOut}
-                className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-5 py-3 text-sm font-semibold text-white/70 transition hover:bg-white/10 hover:text-white disabled:opacity-50"
-              >
-                <LogOut className="h-4 w-4" />
-                <span>{locale === "id" ? "Keluar" : "Log Out"}</span>
-              </button>
-
-              <button
-                type="submit"
-                disabled={
-                  saving ||
-                  !requiredFieldsComplete
-                }
-                className="rounded-xl bg-[#2A835F] border border-[#12544F] px-7 py-3 font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-[#349e73] disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                {saving
-                  ? locale === "id"
-                    ? "Menyimpan..."
-                    : "Saving..."
-                  : locale === "id"
-                    ? "Simpan Profil"
-                    : "Save Profile"}
-              </button>
-            </div>
+            <button
+              type="submit"
+              disabled={
+                saving ||
+                !requiredFieldsComplete
+              }
+              className="rounded-xl bg-emerald-400 px-7 py-3 font-semibold text-black transition hover:-translate-y-0.5 hover:bg-emerald-300 hover:shadow-lg hover:shadow-emerald-400/10 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              {saving
+                ? text.saving
+                : text.save}
+            </button>
 
           </div>
 
@@ -2979,9 +3292,8 @@ export default function ProfilePage() {
           {saveMessage && (
             <div
               className={`rounded-2xl border px-4 py-3 text-sm ${
-                saveMessage.includes(
-                  "berhasil"
-                )
+                saveMessage ===
+                  text.saveSuccess
                   ? "border-emerald-400/20 bg-emerald-400/5 text-emerald-300"
                   : "border-red-400/20 bg-red-400/5 text-red-300"
               }`}
