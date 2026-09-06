@@ -2,81 +2,7 @@ import Groq from "groq-sdk";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 
-const CIRRA_SYSTEM_PROMPT = `
-Kamu adalah Cirra, AI assistant milik ARVENA.
-
-ARVENA adalah connected city ecosystem yang menghubungkan
-circular resources, community, environmental intelligence,
-GIS, impact, dan aktivitas kota.
-
-IDENTITAS:
-Kamu bernama Cirra.
-Jangan memperkenalkan diri di setiap pesan.
-Jika percakapan sudah berjalan, langsung jawab.
-
-GAYA:
-Gunakan bahasa Indonesia.
-Natural.
-Ringkas.
-Langsung ke inti.
-Jawab semua yang ditanyakan user.
-
-FORMAT:
-Jangan gunakan Markdown.
-Jangan gunakan **.
-Jangan gunakan __.
-Jangan gunakan ###.
-Jangan gunakan ---.
-Jangan gunakan bullet dengan * atau -.
-Jangan membuat tabel.
-
-PENTING:
-Jika DATA RESOURCE ARVENA diberikan, gunakan data tersebut.
-Jangan mengarang resource.
-Jangan mengarang jumlah, harga, kota, atau status.
-
-RESOURCE SEARCH:
-Jika resource yang cocok ditemukan di database,
-jangan menuliskan seluruh daftar resource dalam jawaban.
-
-Cukup jelaskan:
-1. resource paling relevan
-2. jumlah/stok
-3. lokasi
-4. harga jika tersedia
-5. apakah sesuai kebutuhan user
-
-UI ARVENA akan otomatis menampilkan resource cards
-di bawah jawabanmu.
-
-Jangan menuliskan:
-"/resources/..."
-atau URL resource.
-
-Contoh:
-
-User:
-"Saya mau ampas kopi 10 kg."
-
-Jawaban:
-"Saya menemukan beberapa resource ampas kopi yang tersedia di ARVENA.
-
-Pilihan paling sesuai adalah ampas kopi di Semarang dengan stok 18,36 kg dan harga Rp200.000 per kg. Stoknya mencukupi kebutuhan 10 kg.
-
-Saya tampilkan resource yang tersedia di bawah jawaban ini."
-
-JANGAN menyalin kembali semua resource satu per satu.
-
-Jika resource sangat mahal dibanding pilihan lain,
-boleh beri perbandingan singkat.
-
-Jika resource tidak ditemukan:
-katakan data yang cocok belum ditemukan di ARVENA.
-Jangan langsung mengatakan tidak ada jika pencarian database
-masih memungkinkan dilakukan dengan variasi nama material.
-
-DATA RESOURCE ARVENA akan diberikan oleh backend.
-`;
+type CirraLocale = "default" | "id" | "en";
 
 type ChatMessage = {
   role: "user" | "assistant";
@@ -88,7 +14,7 @@ type ResourceRow = {
   title: string;
   description: string | null;
   category: string | null;
-  custom_category?: string | null;
+  custom_category: string | null;
   quantity: number | string | null;
   unit: string | null;
   city: string | null;
@@ -96,6 +22,166 @@ type ResourceRow = {
   negotiation_percent: number | string | null;
   status: string | null;
 };
+
+/* =========================================================
+   CIRRA LANGUAGE
+========================================================= */
+
+function normalizeLocale(value: unknown): CirraLocale {
+  if (value === "en") {
+    return "en";
+  }
+
+  if (value === "id") {
+    return "id";
+  }
+
+  // default = MIX
+  // MIX untuk CIRRA tetap menggunakan Bahasa Indonesia.
+  return "default";
+}
+
+function isEnglishLocale(locale: CirraLocale): boolean {
+  return locale === "en";
+}
+
+/* =========================================================
+   SYSTEM PROMPT
+========================================================= */
+
+function buildCirraSystemPrompt(
+  locale: CirraLocale
+): string {
+  const languageInstruction =
+    isEnglishLocale(locale)
+      ? `
+LANGUAGE:
+Answer entirely in English.
+
+Do not mix Indonesian into the answer unless the user explicitly asks you to translate something.
+`
+      : `
+LANGUAGE:
+Answer entirely in Indonesian.
+
+The ARVENA MIX mode still uses Indonesian for CIRRA.
+Do not switch to English merely because the user uses a few English words.
+`;
+
+  return `
+Kamu adalah Cirra, AI assistant milik ARVENA.
+
+ARVENA adalah connected city ecosystem yang menghubungkan circular resources,
+community, environmental intelligence, GIS, impact, dan aktivitas kota.
+
+IDENTITAS:
+Kamu bernama Cirra.
+Jangan memperkenalkan diri di setiap pesan.
+Jika percakapan sudah berjalan, langsung jawab pertanyaan user.
+Jangan mengatakan "Saya CIRRA" kecuali user memang menanyakan siapa kamu.
+
+${languageInstruction}
+
+GAYA:
+Natural.
+Ringkas.
+Jelas.
+Langsung ke inti.
+Boleh menjelaskan dengan beberapa paragraf jika memang diperlukan.
+Jangan terdengar seperti template.
+Jangan mengulang pertanyaan user.
+
+FORMAT:
+Jangan gunakan Markdown.
+Jangan gunakan **.
+Jangan gunakan __.
+Jangan gunakan ###.
+Jangan gunakan horizontal rule.
+Jangan gunakan bullet dengan * atau -.
+Jangan membuat tabel.
+Jangan menampilkan URL.
+Jangan menampilkan path seperti /resources/....
+
+RESOURCE DATA:
+Jika DATA RESOURCE ARVENA diberikan, anggap data tersebut sebagai sumber fakta utama.
+Jangan mengarang resource.
+Jangan mengarang jumlah.
+Jangan mengarang harga.
+Jangan mengarang lokasi.
+Jangan mengarang status.
+
+RESOURCE SEARCH:
+Jika user sedang mencari resource, fokus pada resource yang benar-benar tersedia di database.
+
+Jawaban resource idealnya menjelaskan:
+resource yang paling relevan,
+jumlah/stok,
+lokasi,
+harga jika tersedia,
+dan apakah stok tersebut sesuai dengan kebutuhan user.
+
+UI ARVENA otomatis menampilkan resource cards di bawah jawaban.
+Karena itu jangan menyalin seluruh detail resource ke dalam jawaban.
+
+Jika ada beberapa resource yang bersama-sama dapat memenuhi kebutuhan user,
+jelaskan bahwa kebutuhan tersebut dapat dipenuhi dari beberapa resource.
+
+Contoh:
+User meminta 30 kg ampas kopi.
+Resource A memiliki 12 kg.
+Resource B memiliki 10 kg.
+Resource C memiliki 15 kg.
+
+Jangan mengatakan satu seller memiliki 30 kg.
+Katakan bahwa kebutuhan 30 kg dapat dipenuhi dengan menggabungkan beberapa resource,
+misalnya 12 kg + 10 kg + 8 kg dari resource yang tersedia.
+
+Jika stok satu resource sudah cukup,
+jelaskan bahwa stoknya mencukupi.
+
+Jika resource ditemukan tetapi stok total tidak mencukupi,
+katakan jumlah yang tersedia dan kekurangannya.
+Jangan mengarang tambahan stok.
+
+Jika resource tidak ditemukan:
+katakan bahwa data resource yang cocok belum ditemukan di ARVENA saat ini.
+Jangan mengatakan "tidak ada" secara mutlak jika pencarian hanya berdasarkan kecocokan teks.
+
+Jika DATA RESOURCE ARVENA kosong:
+jangan membuat resource fiktif.
+
+HARGA:
+Gunakan harga dari database jika tersedia.
+Jangan mengubah harga menjadi harga per kg/per unit yang berbeda dari data.
+Jika harga 0, jangan menyimpulkan secara otomatis bahwa resource gratis kecuali konteks/data memang mendukungnya.
+
+NEGOSIASI:
+Jika negotiation_percent tersedia, boleh disebutkan secara singkat.
+Jangan menjadikan persentase negosiasi sebagai harga final.
+
+LOKASI:
+Jika user menyebut kota tertentu, prioritaskan resource dari kota tersebut.
+Jika user tidak menyebut kota, jangan mengarang lokasi user.
+
+TYPO DAN ISTILAH:
+Pahami typo umum, singkatan, bahasa percakapan, dan variasi penyebutan material.
+Contoh:
+"ampas kpi" dapat berarti "ampas kopi".
+"mnyk jelantah" dapat berarti "minyak jelantah".
+"smrg" dapat berarti "Semarang".
+
+Jangan mengarang fakta hanya karena sebuah kata terlihat mirip.
+
+KONTEKS PERCAKAPAN:
+Gunakan conversation history untuk memahami konteks.
+Jika user sebelumnya mengatakan "yang tadi", "yang pertama", "berapa harganya", atau pertanyaan lanjutan lainnya,
+gunakan konteks percakapan sebelumnya.
+
+Jika user hanya menyapa atau berbicara umum,
+jawab secara natural dan jangan memaksakan pencarian resource.
+
+`;
+}
 
 /* =========================================================
    NORMALIZE CHAT MESSAGES
@@ -158,27 +244,49 @@ function normalizeSearchText(
     string,
     string
   > = {
+    // typo / abbreviation
     mnyk: "minyak",
-    minyak: "minyak",
+    minyakk: "minyak",
     jelntah: "jelantah",
     jelanta: "jelantah",
+    jelant: "jelantah",
 
     smrg: "semarang",
     smrang: "semarang",
+    smg: "semarang",
 
     jogja: "yogyakarta",
+    yogya: "yogyakarta",
+
     solo: "surakarta",
+
+    jkt: "jakarta",
+    bdg: "bandung",
+    sby: "surabaya",
+    mlg: "malang",
 
     organik: "organic",
     organiknya: "organic",
 
     plasik: "plastic",
+    plastk: "plastic",
 
-    kertas: "paper",
+    kertasan: "paper",
+    kardusan: "paper",
 
     kaleng: "metal",
     besi: "metal",
     seng: "metal",
+    aluminium: "metal",
+    alumunium: "metal",
+
+    elektronik: "electronic",
+    elektronika: "electronic",
+
+    tekstil: "textile",
+    kain: "textile",
+
+    makanan: "food",
   };
 
   for (
@@ -191,7 +299,7 @@ function normalizeSearchText(
   ) {
     const expression =
       new RegExp(
-        `\\b${from}\\b`,
+        `\\b${escapeRegExp(from)}\\b`,
         "g"
       );
 
@@ -202,7 +310,43 @@ function normalizeSearchText(
       );
   }
 
+  // Variasi material percakapan
+  text = text
+    .replace(
+      /\bampas\s+kpi\b/g,
+      "ampas kopi"
+    )
+    .replace(
+      /\bampas\s+coffe\b/g,
+      "ampas kopi"
+    )
+    .replace(
+      /\bkopi\s+ampas\b/g,
+      "ampas kopi"
+    )
+    .replace(
+      /\bminyak\s+goreng\s+bekas\b/g,
+      "minyak jelantah"
+    )
+    .replace(
+      /\bminyak\s+bekas\b/g,
+      "minyak jelantah"
+    )
+    .replace(
+      /\bbotol\s+plastik\b/g,
+      "botol plastik"
+    );
+
   return text;
+}
+
+function escapeRegExp(
+  value: string
+): string {
+  return value.replace(
+    /[.*+?^${}()|[\]\\]/g,
+    "\\$&"
+  );
 }
 
 /* =========================================================
@@ -212,13 +356,51 @@ function normalizeSearchText(
 function tokenize(
   value: string
 ): string[] {
-  return normalizeSearchText(
-    value
-  )
+  const stopWords = new Set([
+    "saya",
+    "aku",
+    "kamu",
+    "anda",
+    "yang",
+    "dan",
+    "atau",
+    "di",
+    "ke",
+    "dari",
+    "untuk",
+    "dengan",
+    "ini",
+    "itu",
+    "ada",
+    "apa",
+    "berapa",
+    "apakah",
+    "tolong",
+    "dong",
+    "donk",
+    "ndak",
+    "gak",
+    "ga",
+    "tidak",
+    "mau",
+    "ingin",
+    "butuh",
+    "cari",
+    "carikan",
+    "mencari",
+    "jual",
+    "jualan",
+    "beli",
+    "membeli",
+    "punya",
+  ]);
+
+  return normalizeSearchText(value)
     .split(" ")
     .filter(
       (token) =>
-        token.length >= 2
+        token.length >= 2 &&
+        !stopWords.has(token)
     );
 }
 
@@ -285,6 +467,9 @@ function inferCategory(
     ) ||
     normalized.includes(
       "sisa makanan"
+    ) ||
+    normalized.includes(
+      "organik"
     )
   ) {
     return "organic";
@@ -330,6 +515,9 @@ function inferCategory(
     ) ||
     normalized.includes(
       "aluminium"
+    ) ||
+    normalized.includes(
+      "kaleng"
     )
   ) {
     return "metal";
@@ -378,36 +566,109 @@ function inferCategory(
 }
 
 /* =========================================================
-   INFER MATERIAL TERMS
+   MATERIAL ALIASES
 ========================================================= */
 
-function inferMaterialTerms(
+function getMaterialAliases(
   text: string
 ): string[] {
   const normalized =
     normalizeSearchText(text);
 
-  const terms = [
-    "minyak jelantah",
-    "ampas kopi",
-    "kulit pisang",
-    "botol plastik",
-    "plastik",
-    "kardus",
-    "kertas",
-    "seng",
-    "besi",
-    "aluminium",
-    "elektronik",
-    "tekstil",
-    "kain",
-    "sisa makanan",
-  ];
+  const aliases: Record<
+    string,
+    string[]
+  > = {
+    "ampas kopi": [
+      "ampas kopi",
+      "coffee grounds",
+      "coffee ground",
+      "kopi",
+    ],
 
-  return terms.filter(
-    (term) =>
-      normalized.includes(term)
-  );
+    "minyak jelantah": [
+      "minyak jelantah",
+      "minyak bekas",
+      "minyak goreng bekas",
+      "used cooking oil",
+      "jelantah",
+    ],
+
+    "kulit pisang": [
+      "kulit pisang",
+      "banana peel",
+      "banana peels",
+    ],
+
+    "botol plastik": [
+      "botol plastik",
+      "plastic bottle",
+      "plastic bottles",
+    ],
+
+    plastik: [
+      "plastik",
+      "plastic",
+    ],
+
+    kardus: [
+      "kardus",
+      "cardboard",
+    ],
+
+    kertas: [
+      "kertas",
+      "paper",
+    ],
+
+    besi: [
+      "besi",
+      "iron",
+      "steel",
+    ],
+
+    aluminium: [
+      "aluminium",
+      "aluminum",
+    ],
+
+    elektronik: [
+      "elektronik",
+      "electronic",
+      "e waste",
+      "ewaste",
+    ],
+
+    tekstil: [
+      "tekstil",
+      "textile",
+      "kain",
+      "fabric",
+    ],
+
+    "sisa makanan": [
+      "sisa makanan",
+      "food waste",
+      "leftover food",
+    ],
+  };
+
+  return Object.entries(
+    aliases
+  )
+    .filter(
+      ([, values]) =>
+        values.some(
+          (value) =>
+            normalized.includes(
+              value
+            )
+        )
+    )
+    .flatMap(
+      ([, values]) =>
+        values
+    );
 }
 
 /* =========================================================
@@ -420,20 +681,33 @@ function isResourceSearchIntent(
   const normalized =
     normalizeSearchText(text);
 
+  const materialTerms =
+    getMaterialAliases(text);
+
+  if (
+    materialTerms.length > 0
+  ) {
+    return true;
+  }
+
   const resourceSignals = [
     "resource",
     "cari",
     "mencari",
+    "carikan",
     "butuh",
     "ingin",
     "mau",
     "membeli",
     "mendapatkan",
     "mengambil",
+    "jual",
+    "jualan",
+    "tersedia",
+    "stok",
+    "ampas",
     "minyak",
     "jelantah",
-    "ampas",
-    "kopi",
     "plastik",
     "botol",
     "kardus",
@@ -492,41 +766,108 @@ function scoreResource(
 
   let score = 0;
 
+  /* -------------------------------------------------------
+     TOKEN MATCH
+  ------------------------------------------------------- */
+
   for (
     const token of queryTokens
   ) {
     if (
       title.includes(token)
     ) {
-      score += 10;
+      score += 18;
     }
 
     if (
       customCategory.includes(token)
     ) {
-      score += 10;
+      score += 18;
     }
 
     if (
-      description.includes(
-        token
-      )
-    ) {
-      score += 4;
-    }
-
-    if (
-      category.includes(token)
+      description.includes(token)
     ) {
       score += 6;
     }
 
     if (
-      city.includes(token)
+      category.includes(token)
     ) {
       score += 8;
     }
+
+    if (
+      city.includes(token)
+    ) {
+      score += 10;
+    }
   }
+
+  /* -------------------------------------------------------
+     EXACT MATERIAL MATCH
+  ------------------------------------------------------- */
+
+  const materialTerms =
+    getMaterialAliases(
+      userText
+    );
+
+  for (
+    const term of materialTerms
+  ) {
+    const normalizedTerm =
+      normalizeSearchText(
+        term
+      );
+
+    if (
+      title.includes(
+        normalizedTerm
+      )
+    ) {
+      score += 45;
+    }
+
+    if (
+      customCategory.includes(
+        normalizedTerm
+      )
+    ) {
+      score += 45;
+    }
+
+    if (
+      description.includes(
+        normalizedTerm
+      )
+    ) {
+      score += 20;
+    }
+
+    /*
+     * Special handling:
+     * "kopi" sendiri tidak boleh membuat
+     * semua resource kopi menjadi relevan.
+     */
+    if (
+      normalizedTerm === "kopi" &&
+      (
+        title.includes(
+          "ampas kopi"
+        ) ||
+        customCategory.includes(
+          "ampas kopi"
+        )
+      )
+    ) {
+      score += 30;
+    }
+  }
+
+  /* -------------------------------------------------------
+     CITY MATCH
+  ------------------------------------------------------- */
 
   const cityQuery =
     inferCity(userText);
@@ -535,32 +876,12 @@ function scoreResource(
     cityQuery &&
     city.includes(cityQuery)
   ) {
-    score += 25;
+    score += 40;
   }
 
-  const materialTerms =
-    inferMaterialTerms(
-      userText
-    );
-
-  for (
-    const term of materialTerms
-  ) {
-    if (
-      title.includes(term) ||
-      customCategory.includes(term)
-    ) {
-      score += 40;
-    }
-
-    if (
-      description.includes(
-        term
-      )
-    ) {
-      score += 15;
-    }
-  }
+  /* -------------------------------------------------------
+     CATEGORY MATCH
+  ------------------------------------------------------- */
 
   const categoryQuery =
     inferCategory(userText);
@@ -569,14 +890,32 @@ function scoreResource(
     categoryQuery &&
     category === categoryQuery
   ) {
-    score += 20;
+    score += 22;
   }
+
+  /* -------------------------------------------------------
+     AVAILABLE STATUS
+  ------------------------------------------------------- */
 
   if (
     resource.status ===
     "available"
   ) {
     score += 10;
+  }
+
+  /* -------------------------------------------------------
+     POSITIVE STOCK
+  ------------------------------------------------------- */
+
+  const quantity =
+    Number(resource.quantity);
+
+  if (
+    Number.isFinite(quantity) &&
+    quantity > 0
+  ) {
+    score += 5;
   }
 
   return score;
@@ -632,6 +971,12 @@ async function searchArvenaResources(
     (data as ResourceRow[]) ??
     [];
 
+  if (
+    resources.length === 0
+  ) {
+    return [];
+  }
+
   const scored =
     resources
       .map(
@@ -646,7 +991,7 @@ async function searchArvenaResources(
       )
       .filter(
         (item) =>
-          item.score > 0
+          item.score >= 10
       )
       .sort(
         (a, b) =>
@@ -656,6 +1001,10 @@ async function searchArvenaResources(
   const cityQuery =
     inferCity(userText);
 
+  /*
+   * Kalau user menyebut kota,
+   * resource dari kota tersebut diprioritaskan.
+   */
   if (cityQuery) {
     const cityMatches =
       scored.filter(
@@ -672,7 +1021,7 @@ async function searchArvenaResources(
       cityMatches.length > 0
     ) {
       return cityMatches
-        .slice(0, 5)
+        .slice(0, 4)
         .map(
           (item) =>
             item.resource
@@ -681,11 +1030,47 @@ async function searchArvenaResources(
   }
 
   return scored
-    .slice(0, 5)
+    .slice(0, 4)
     .map(
       (item) =>
         item.resource
     );
+}
+
+/* =========================================================
+   FORMAT NUMBER
+========================================================= */
+
+function formatNumber(
+  value:
+    | number
+    | string
+    | null
+    | undefined
+): string {
+  if (
+    value === null ||
+    value === undefined ||
+    value === ""
+  ) {
+    return "0";
+  }
+
+  const number =
+    Number(value);
+
+  if (
+    !Number.isFinite(number)
+  ) {
+    return "0";
+  }
+
+  return new Intl.NumberFormat(
+    "id-ID",
+    {
+      maximumFractionDigits: 2,
+    }
+  ).format(number);
 }
 
 /* =========================================================
@@ -697,9 +1082,16 @@ function formatCurrency(
     | number
     | string
     | null
+    | undefined
 ): string {
   const number =
-    Number(value) || 0;
+    Number(value);
+
+  if (
+    !Number.isFinite(number)
+  ) {
+    return "0";
+  }
 
   return new Intl.NumberFormat(
     "id-ID",
@@ -721,28 +1113,290 @@ function buildResourceContext(
   ) {
     return `
 DATA RESOURCE ARVENA:
-Tidak ditemukan resource available yang cocok.
+Tidak ada resource available yang lolos pencocokan pencarian saat ini.
+
+ATURAN:
+Jangan mengarang resource.
+Jangan menyebut nama seller fiktif.
+Jangan membuat stok atau harga fiktif.
 `;
   }
 
   return `
 DATA RESOURCE ARVENA:
+
 ${resources
   .map(
-    (resource, index) => `
+    (resource, index) => {
+      const quantity =
+        Number(resource.quantity);
+
+      const price =
+        Number(resource.price);
+
+      return `
 Resource ${index + 1}
 ID: ${resource.id}
 Judul: ${resource.title}
+Deskripsi: ${resource.description ?? "Tidak tersedia"}
 Kategori: ${resource.category ?? "Tidak tersedia"}
-Jumlah: ${resource.quantity ?? 0} ${resource.unit ?? ""}
+Kategori custom: ${resource.custom_category ?? "Tidak tersedia"}
+Jumlah: ${
+        Number.isFinite(quantity)
+          ? formatNumber(quantity)
+          : "0"
+      } ${resource.unit ?? ""}
 Kota: ${resource.city ?? "Tidak tersedia"}
-Harga: Rp${formatCurrency(resource.price)} per ${resource.unit ?? "unit"}
-Negosiasi: ${resource.negotiation_percent ?? 0}%
+Harga: ${
+        Number.isFinite(price)
+          ? `Rp${formatCurrency(price)}`
+          : "Tidak tersedia"
+      } per ${resource.unit ?? "unit"}
+Negosiasi: ${
+        resource.negotiation_percent ??
+        0
+      }%
 Status: ${resource.status ?? "Tidak tersedia"}
-`
+`;
+    }
   )
   .join("\n")}
+
+INSTRUKSI:
+Gunakan hanya data di atas.
+Jangan mengubah angka.
+Jangan mengarang informasi yang tidak tersedia.
 `;
+}
+
+/* =========================================================
+   DETECT QUERY QUANTITY
+========================================================= */
+
+function extractRequestedQuantity(
+  text: string
+): number | null {
+  const normalized =
+    normalizeSearchText(text);
+
+  /*
+   * Menangkap:
+   * 10 kg
+   * 10kg
+   * 30 kilogram
+   * 30 kg
+   */
+
+  const match =
+    normalized.match(
+      /(\d+(?:[.,]\d+)?)\s*(kg|kilogram|g|gram|ton|liter|l|pcs|buah|unit)\b/i
+    );
+
+  if (!match) {
+    return null;
+  }
+
+  const value =
+    Number(
+      match[1].replace(
+        ",",
+        "."
+      )
+    );
+
+  if (
+    !Number.isFinite(value)
+  ) {
+    return null;
+  }
+
+  const unit =
+    match[2].toLowerCase();
+
+  if (
+    unit === "g" ||
+    unit === "gram"
+  ) {
+    return value / 1000;
+  }
+
+  if (
+    unit === "ton"
+  ) {
+    return value * 1000;
+  }
+
+  return value;
+}
+
+/* =========================================================
+   BUILD RESOURCE SUMMARY
+========================================================= */
+
+function buildResourceSummary(
+  resources: ResourceRow[],
+  userText: string,
+  locale: CirraLocale
+): string {
+  if (
+    resources.length === 0
+  ) {
+    return isEnglishLocale(
+      locale
+    )
+      ? "I couldn't find a matching resource in ARVENA right now. I can keep searching if you provide a material name or location."
+      : "Saya belum menemukan resource yang cocok di ARVENA saat ini. Kalau kamu menyebutkan material atau lokasi yang diinginkan, saya bisa bantu mencarinya.";
+  }
+
+  const requestedQuantity =
+    extractRequestedQuantity(
+      userText
+    );
+
+  const quantities =
+    resources
+      .map(
+        (resource) =>
+          Number(resource.quantity)
+      )
+      .filter(
+        (quantity) =>
+          Number.isFinite(
+            quantity
+          ) &&
+          quantity > 0
+      );
+
+  const totalAvailable =
+    quantities.reduce(
+      (
+        total,
+        quantity
+      ) =>
+        total + quantity,
+      0
+    );
+
+  const top =
+    resources[0];
+
+  if (
+    isEnglishLocale(locale)
+  ) {
+    let message =
+      `I found ${resources.length} relevant resource${resources.length > 1 ? "s" : ""} in ARVENA. `;
+
+    message += `The closest match is "${top.title}"`;
+
+    if (top.city) {
+      message += ` in ${top.city}`;
+    }
+
+    if (
+      top.quantity !==
+        null &&
+      top.quantity !==
+        undefined
+    ) {
+      message += ` with ${formatNumber(top.quantity)} ${top.unit ?? "unit"} available`;
+    }
+
+    if (
+      top.price !==
+        null &&
+      top.price !==
+        undefined &&
+      Number(top.price) > 0
+    ) {
+      message += ` at Rp${formatCurrency(top.price)} per ${top.unit ?? "unit"}`;
+    }
+
+    message += ".";
+
+    if (
+      requestedQuantity !==
+        null &&
+      totalAvailable <
+        requestedQuantity &&
+      resources.length > 1
+    ) {
+      message += ` The matching resources currently total about ${formatNumber(totalAvailable)} ${top.unit ?? "unit"}, so they do not fully cover your requested ${formatNumber(requestedQuantity)} ${top.unit ?? "unit"}.`;
+    } else if (
+      requestedQuantity !==
+        null &&
+      totalAvailable >=
+        requestedQuantity &&
+      resources.length > 1
+    ) {
+      message += ` Your requested ${formatNumber(requestedQuantity)} ${top.unit ?? "unit"} can be covered by combining available resources.`;
+    } else if (
+      requestedQuantity !==
+        null &&
+      Number(top.quantity) >=
+        requestedQuantity
+    ) {
+      message += ` The available stock is enough for your requested ${formatNumber(requestedQuantity)} ${top.unit ?? "unit"}.`;
+    }
+
+    return message;
+  }
+
+  let message =
+    `Saya menemukan ${resources.length} resource yang relevan di ARVENA. `;
+
+  message += `Pilihan yang paling sesuai adalah "${top.title}"`;
+
+  if (top.city) {
+    message += ` di ${top.city}`;
+  }
+
+  if (
+    top.quantity !==
+      null &&
+    top.quantity !==
+      undefined
+  ) {
+    message += ` dengan stok ${formatNumber(top.quantity)} ${top.unit ?? "unit"}`;
+  }
+
+  if (
+    top.price !==
+      null &&
+    top.price !==
+      undefined &&
+    Number(top.price) > 0
+  ) {
+    message += ` dengan harga Rp${formatCurrency(top.price)} per ${top.unit ?? "unit"}`;
+  }
+
+  message += ".";
+
+  if (
+    requestedQuantity !==
+      null &&
+    totalAvailable <
+      requestedQuantity &&
+    resources.length > 1
+  ) {
+    message += ` Jika digabung, resource yang ditemukan saat ini menyediakan sekitar ${formatNumber(totalAvailable)} ${top.unit ?? "unit"}, jadi belum mencukupi kebutuhan ${formatNumber(requestedQuantity)} ${top.unit ?? "unit"}.`;
+  } else if (
+    requestedQuantity !==
+      null &&
+    totalAvailable >=
+      requestedQuantity &&
+    resources.length > 1
+  ) {
+    message += ` Kebutuhan ${formatNumber(requestedQuantity)} ${top.unit ?? "unit"} dapat dipenuhi dengan menggabungkan beberapa resource yang tersedia.`;
+  } else if (
+    requestedQuantity !==
+      null &&
+    Number(top.quantity) >=
+      requestedQuantity
+  ) {
+    message += ` Stoknya mencukupi kebutuhan ${formatNumber(requestedQuantity)} ${top.unit ?? "unit"}.`;
+  }
+
+  return message;
 }
 
 /* =========================================================
@@ -753,49 +1407,286 @@ function cleanCirraOutput(
   value: string
 ): string {
   return value
-    // Hapus bold markdown tanpa menggunakan regex flag "s"
     .replace(
       /\*\*([\s\S]*?)\*\*/g,
       "$1"
     )
-
-    // Hapus underline markdown
     .replace(
       /__([\s\S]*?)__/g,
       "$1"
     )
-
-    // Hapus heading markdown
     .replace(
       /^#{1,6}\s*/gm,
       ""
     )
-
-    // Hapus horizontal rule
     .replace(
       /^\s*---+\s*$/gm,
       ""
     )
-
-    // Hapus bullet markdown
     .replace(
       /^\s*[-*]\s+/gm,
       ""
     )
-
-    // Hapus URL resource
     .replace(
       /\/resources\/[a-zA-Z0-9-]+/g,
       ""
     )
-
-    // Rapikan newline
+    .replace(
+      /https?:\/\/[^\s]+/gi,
+      ""
+    )
     .replace(
       /\n{3,}/g,
       "\n\n"
     )
-
     .trim();
+}
+
+/* =========================================================
+   FALLBACK
+========================================================= */
+
+function generateCirraFallback(
+  query: string,
+  matchedResources: ResourceRow[],
+  locale: CirraLocale
+): string {
+  const clean =
+    normalizeSearchText(query);
+
+  /*
+   * RESOURCE
+   */
+
+  if (
+    isResourceSearchIntent(
+      query
+    )
+  ) {
+    return buildResourceSummary(
+      matchedResources,
+      query,
+      locale
+    );
+  }
+
+  /*
+   * CLASSIFICATION
+   */
+
+  if (
+    clean.includes(
+      "klasifikasi"
+    ) ||
+    clean.includes(
+      "classify"
+    ) ||
+    clean.includes(
+      "material"
+    ) ||
+    clean.includes(
+      "jenis"
+    ) ||
+    clean.includes(
+      "daur ulang"
+    ) ||
+    clean.includes(
+      "recycle"
+    )
+  ) {
+    if (
+      isEnglishLocale(
+        locale
+      )
+    ) {
+      return "I can help identify and classify a circular material based on its characteristics, composition, and potential reuse.";
+    }
+
+    return "Saya bisa membantu mengidentifikasi dan mengklasifikasikan material berdasarkan karakteristik, komposisi, serta potensi pemanfaatan kembalinya.";
+  }
+
+  /*
+   * PRICE
+   */
+
+  if (
+    clean.includes(
+      "harga"
+    ) ||
+    clean.includes(
+      "price"
+    ) ||
+    clean.includes(
+      "biaya"
+    ) ||
+    clean.includes(
+      "pasar"
+    )
+  ) {
+    if (
+      isEnglishLocale(
+        locale
+      )
+    ) {
+      return "I can help estimate a secondary-resource price using the available ARVENA data, including material type, quantity, condition, and location.";
+    }
+
+    return "Saya bisa membantu memperkirakan harga resource sekunder berdasarkan data ARVENA, jenis material, jumlah, kondisi, dan lokasi.";
+  }
+
+  /*
+   * IMPACT
+   */
+
+  if (
+    clean.includes(
+      "emisi"
+    ) ||
+    clean.includes(
+      "impact"
+    ) ||
+    clean.includes(
+      "dampak"
+    ) ||
+    clean.includes(
+      "co2"
+    ) ||
+    clean.includes(
+      "hitung"
+    )
+  ) {
+    if (
+      isEnglishLocale(
+        locale
+      )
+    ) {
+      return "I can help estimate environmental impact and transport emissions for circular activities. For route-based calculations, the Impact feature provides the more detailed result.";
+    }
+
+    return "Saya bisa membantu memperkirakan dampak lingkungan dan emisi transportasi dari aktivitas sirkular. Untuk perhitungan berbasis rute, fitur Impact ARVENA menyediakan hasil yang lebih detail.";
+  }
+
+  /*
+   * COMMUNITY
+   */
+
+  if (
+    clean.includes(
+      "komunitas"
+    ) ||
+    clean.includes(
+      "community"
+    ) ||
+    clean.includes(
+      "kegiatan"
+    ) ||
+    clean.includes(
+      "event"
+    ) ||
+    clean.includes(
+      "workshop"
+    )
+  ) {
+    if (
+      isEnglishLocale(
+        locale
+      )
+    ) {
+      return "You can explore active communities and circular activities through ARVENA Community and Events.";
+    }
+
+    return "Kamu bisa menjelajahi komunitas aktif dan kegiatan ekonomi sirkular melalui fitur Community dan Events ARVENA.";
+  }
+
+  /*
+   * GREETING / GENERAL
+   */
+
+  if (
+    isEnglishLocale(
+      locale
+    )
+  ) {
+    return "How can I help you with ARVENA today?";
+  }
+
+  return "Ada yang ingin kamu cari atau tanyakan di ARVENA?";
+}
+
+/* =========================================================
+   GROQ
+========================================================= */
+
+async function generateWithGroq(
+  apiKey: string,
+  messages: Array<{
+    role:
+      | "system"
+      | "user"
+      | "assistant";
+    content: string;
+  }>
+): Promise<string> {
+  const groq =
+    new Groq({
+      apiKey,
+    });
+
+  try {
+    const completion =
+      await groq.chat.completions.create(
+        {
+          model:
+            "llama-3.3-70b-versatile",
+          messages,
+          temperature: 0.2,
+          max_completion_tokens: 600,
+          stream: false,
+        }
+      );
+
+    return (
+      completion
+        .choices[0]
+        ?.message
+        ?.content
+        ?.trim() ?? ""
+    );
+  } catch (primaryError) {
+    console.error(
+      "CIRRA GROQ PRIMARY ERROR:",
+      primaryError
+    );
+  }
+
+  try {
+    const fallbackCompletion =
+      await groq.chat.completions.create(
+        {
+          model:
+            "llama-3.1-8b-instant",
+          messages,
+          temperature: 0.2,
+          max_completion_tokens: 600,
+          stream: false,
+        }
+      );
+
+    return (
+      fallbackCompletion
+        .choices[0]
+        ?.message
+        ?.content
+        ?.trim() ?? ""
+    );
+  } catch (secondaryError) {
+    console.error(
+      "CIRRA GROQ FALLBACK ERROR:",
+      secondaryError
+    );
+
+    return "";
+  }
 }
 
 /* =========================================================
@@ -814,7 +1705,7 @@ export async function POST(
         {
           success: false,
           error:
-            "GROQ_API_KEY belum ditemukan di .env.local.",
+            "GROQ_API_KEY belum ditemukan.",
         },
         {
           status: 500,
@@ -824,6 +1715,11 @@ export async function POST(
 
     const body =
       await request.json();
+
+    const locale =
+      normalizeLocale(
+        body?.locale
+      );
 
     let messages =
       normalizeMessages(
@@ -864,7 +1760,10 @@ export async function POST(
       );
     }
 
-    // Batasi history agar request tidak terlalu besar
+    /*
+     * Batasi history.
+     */
+
     const recentMessages =
       messages.slice(-12);
 
@@ -882,29 +1781,50 @@ export async function POST(
         ?.content?.trim() ??
       "";
 
+    if (!userText) {
+      return NextResponse.json(
+        {
+          success: false,
+          error:
+            "Pesan user tidak ditemukan.",
+        },
+        {
+          status: 400,
+        }
+      );
+    }
+
     /* =====================================================
-       SEARCH RESOURCE
+       RESOURCE SEARCH
     ===================================================== */
 
     let matchedResources:
       ResourceRow[] = [];
 
-    if (
+    const resourceIntent =
       isResourceSearchIntent(
         userText
-      )
-    ) {
+      );
+
+    if (resourceIntent) {
       matchedResources =
         await searchArvenaResources(
           userText
         );
     }
 
+    /* =====================================================
+       RESOURCE CONTEXT
+    ===================================================== */
+
     const resourceContext =
       buildResourceContext(
         matchedResources
       );
 
+    /* =====================================================
+       GROQ MESSAGES
+    ===================================================== */
 
     const groqMessages: Array<{
       role:
@@ -916,7 +1836,9 @@ export async function POST(
       {
         role: "system",
         content:
-          CIRRA_SYSTEM_PROMPT,
+          buildCirraSystemPrompt(
+            locale
+          ),
       },
       {
         role: "system",
@@ -925,143 +1847,107 @@ export async function POST(
       },
     ];
 
-    /* =====================================================
-       ADD CONVERSATION HISTORY
-    ===================================================== */
-
     for (
-      const message of recentMessages
+      const chatMessage of recentMessages
     ) {
       groqMessages.push({
-        role: message.role,
+        role:
+          chatMessage.role,
         content:
-          message.content,
+          chatMessage.content,
       });
     }
 
     /* =====================================================
-       CALL GROQ
-    ===================================================== */
-
-    /* =====================================================
-       CALL GROQ (WITH VALID MODELS & FALLBACK)
+       GROQ
     ===================================================== */
 
     let rawOutput = "";
 
-    if (apiKey) {
-      try {
-        const groq = new Groq({ apiKey });
+    rawOutput =
+      await generateWithGroq(
+        apiKey,
+        groqMessages
+      );
 
-        const completion = await groq.chat.completions.create({
-          model: "llama-3.3-70b-versatile",
-          messages: groqMessages,
-          temperature: 0.2,
-          max_completion_tokens: 600,
-          stream: false,
-        });
-
-        rawOutput = completion.choices[0]?.message?.content?.trim() ?? "";
-      } catch (primaryError) {
-        console.warn("Groq primary model failed, trying fallback model:", primaryError);
-        try {
-          const groq = new Groq({ apiKey });
-          const fallbackCompletion = await groq.chat.completions.create({
-            model: "llama-3.1-8b-instant",
-            messages: groqMessages,
-            temperature: 0.2,
-            max_completion_tokens: 600,
-            stream: false,
-          });
-          rawOutput = fallbackCompletion.choices[0]?.message?.content?.trim() ?? "";
-        } catch (secondaryError) {
-          console.warn("Groq fallback model also failed, generating rule-based response:", secondaryError);
-        }
-      }
-    }
+    /* =====================================================
+       FALLBACK
+    ===================================================== */
 
     if (!rawOutput) {
-      // Intelligent Rule-Based Fallback Generator
-      rawOutput = generateCirraFallback(userText, matchedResources);
+      rawOutput =
+        generateCirraFallback(
+          userText,
+          matchedResources,
+          locale
+        );
     }
 
     /* =====================================================
-       CLEAN RESPONSE
+       CLEAN
     ===================================================== */
 
-    const cleanedOutput = cleanCirraOutput(rawOutput);
+    const cleanedOutput =
+      cleanCirraOutput(
+        rawOutput
+      );
 
     /* =====================================================
-       RESPONSE
+       FINAL RESPONSE
     ===================================================== */
 
     return NextResponse.json({
       success: true,
-      message: cleanedOutput,
-      resources: matchedResources.map((resource) => ({
-        id: resource.id,
-        title: resource.title,
-        description: resource.description,
-        category: resource.category,
-        custom_category: resource.custom_category,
-        quantity: resource.quantity,
-        unit: resource.unit,
-        city: resource.city,
-        price: resource.price,
-        negotiation_percent: resource.negotiation_percent,
-        status: resource.status,
-      })),
+      message:
+        cleanedOutput ||
+        generateCirraFallback(
+          userText,
+          matchedResources,
+          locale
+        ),
+      resources:
+        matchedResources.map(
+          (resource) => ({
+            id: resource.id,
+            title:
+              resource.title,
+            description:
+              resource.description,
+            category:
+              resource.category,
+            custom_category:
+              resource.custom_category,
+            quantity:
+              resource.quantity,
+            unit:
+              resource.unit,
+            city:
+              resource.city,
+            price:
+              resource.price,
+            negotiation_percent:
+              resource.negotiation_percent,
+            status:
+              resource.status,
+          })
+        ),
     });
   } catch (error) {
-    console.error("CIRRA API ERROR:", error);
+    console.error(
+      "CIRRA API ERROR:",
+      error
+    );
 
-    // Provide intelligent fallback instead of a generic error message
-    const fallbackMsg = "Halo, saya CIRRA AI ARVENA. Saya siap membantu kamu mencari resource sirkular, memetakan emisi rute, klasifikasi material, dan menemukan komunitas aktif di kotamu. Apa yang sedang kamu cari hari ini?";
-
-    return NextResponse.json({
-      success: true,
-      message: fallbackMsg,
-      resources: [],
-    });
+    return NextResponse.json(
+      {
+        success: false,
+        error:
+          "Cirra sedang mengalami gangguan. Silakan coba lagi.",
+        resources: [],
+      },
+      {
+        status: 500,
+      }
+    );
   }
-}
-
-/* =========================================================
-   INTELLIGENT CIRRA FALLBACK ENGINE
-========================================================= */
-
-function generateCirraFallback(
-  query: string,
-  matchedResources: ResourceRow[]
-): string {
-  const clean = normalizeSearchText(query);
-
-  if (matchedResources.length > 0) {
-    const top = matchedResources[0];
-    const cityText = top.city ? ` di ${top.city}` : "";
-    const qtyText = top.quantity ? ` dengan kuantitas ${top.quantity} ${top.unit || "unit"}` : "";
-    const priceText = top.price && Number(top.price) > 0 ? ` seharga Rp${formatCurrency(top.price)}` : " tersedia untuk barter/gratis";
-
-    return `Saya menemukan beberapa resource sirkular yang cocok di ekosistem ARVENA.
-
-Pilihan utama yang tersedia adalah "${top.title}"${cityText}${qtyText}${priceText}. Anda dapat langsung mengajukan permintaan atau pertukaran sirkular melalui kartu resource yang ditampilkan di bawah ini.`;
-  }
-
-  if (clean.includes("klasifikasi") || clean.includes("classify") || clean.includes("material") || clean.includes("jenis") || clean.includes("daur ulang") || clean.includes("recycle")) {
-    return "Untuk mengklasifikasikan material sirkular, periksa kode resin (pada plastik), tingkat kelembapan (pada organik), atau jenis serat (pada tekstil). Di ARVENA, material dikelompokkan ke dalam Organik, Plastik, Kertas/Kardus, Logam, Elektronik, Sisa Makanan, Tekstil, dan Material Kustom lainnya untuk memudahkan pemilahan dan pertukaran.";
-  }
-
-  if (clean.includes("harga") || clean.includes("price") || clean.includes("biaya") || clean.includes("pasar")) {
-    return "Harga material sirkular di ARVENA ditentukan berdasarkan kualitas, volume, dan lokasi penjemputan. Anda dapat menentukan batas negosiasi harga saat mendaftarkan resource, atau memilih opsi barter/gratis untuk mempercepat sirkulasi.";
-  }
-
-  if (clean.includes("emisi") || clean.includes("impact") || clean.includes("dampak") || clean.includes("co2") || clean.includes("hitung")) {
-    return "Setiap kilogram material yang dialihkan dari TPA berkontribusi langsung pada pengurangan emisi gas rumah kaca. Melalui menu Impact ARVENA, Anda dapat menghitung rute transportasi sirkular beserta estimasi emisi CO₂ yang berhasil dihindari.";
-  }
-
-  if (clean.includes("komunitas") || clean.includes("community") || clean.includes("kegiatan") || clean.includes("event") || clean.includes("workshop")) {
-    return "Anda dapat menjelajahi hub komunitas aktif dan kegiatan daur ulang lokal melalui menu Community dan Events di ARVENA. Komunitas dapat menyelenggarakan drop-off bersama, workshop, dan mengelola resource kolektif.";
-  }
-
-  return "Saya CIRRA, asisten kecerdasan sirkular ARVENA. Saya dapat membantu mencari resource sekunder, memeriksa estimasi dampak lingkungan, menghitung rute emisi, dan menemukan inisiatif komunitas di sekitar Anda. Silakan sampaikan apa yang ingin Anda cari atau konsultasikan.";
 }
