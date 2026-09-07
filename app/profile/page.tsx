@@ -2165,7 +2165,7 @@ export default function ProfilePage() {
   const displayName =
     form.full_name ||
     form.username ||
-    "ARVENA User";
+    "Arvena User";
 
   const displayRole =
     text.roleName(
