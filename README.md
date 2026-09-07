@@ -1,6 +1,7 @@
 <div align="center">
 
 # ARVENA
+
 ### Turning Unused Resources into Shared Impact
 
 [![Live Demo](https://img.shields.io/badge/🚀_Live_Demo-Visit_Site-success?style=for-the-badge)](https://arvena-seven.vercel.app)
@@ -22,10 +23,10 @@
 - [Tentang Proyek](#-tentang-proyek)
 - [Fitur Unggulan](#-fitur-unggulan)
 - [Demo & Screenshot](#-demo--screenshot)
-- [Teknologi](#-teknologi)
-- [Arsitektur Sistem](#-arsitektur-sistem)
-- [Instalasi & Setup](#-instalasi--setup)
-- [Penggunaan](#-penggunaan)
+- [Teknologi](#️-teknologi)
+- [Arsitektur Sistem](#️-arsitektur-sistem)
+- [Instalasi & Setup](#️-instalasi--setup)
+- [Penggunaan](#️-penggunaan)
 - [API Documentation](#-api-documentation)
 - [Testing](#-testing)
 - [Tim Developer](#-tim-developer)
@@ -33,29 +34,21 @@
 
 ---
 
-## 👥 Tim Developer
-
-| Nama | Peran | GitHub |
-|------|-------|--------|
-| **Ferja Arnanda** | Project Lead & Full Stack Developer, Frontend Developer, Backend & Database Developer | @ferjaarnanda (https://github.com/ferjaarnanda) |
-
----
-
 ## 🎯 Tentang Proyek
 
 ### Latar Belakang
 
-Pertumbuhan aktivitas konsumsi dan produksi di perkotaan menghasilkan berbagai jenis resource yang masih memiliki nilai guna, tetapi sering kali berakhir sebagai limbah karena tidak adanya mekanisme yang efektif untuk mempertemukan pihak yang memiliki resource dengan pihak yang membutuhkannya.
+Pertumbuhan aktivitas konsumsi dan produksi di perkotaan menghasilkan berbagai jenis resource yang masih memiliki nilai guna, tetapi sering kali berakhir sebagai limbah karena belum adanya mekanisme yang efektif untuk mempertemukan pihak yang memiliki resource dengan pihak yang membutuhkannya.
 
-Permasalahan tersebut tidak hanya berkaitan dengan pengelolaan limbah, tetapi juga dengan bagaimana masyarakat, bisnis, komunitas, dan berbagai pihak di dalam kota dapat terhubung dalam sebuah ekosistem yang mendukung perputaran resource.
+Permasalahan tersebut tidak hanya berkaitan dengan pengelolaan limbah, tetapi juga dengan bagaimana masyarakat, bisnis, komunitas, organisasi, dan berbagai pihak di dalam kota dapat terhubung dalam sebuah ekosistem yang mendukung perputaran resource.
 
-ARVENA hadir sebagai platform digital berbasis web yang menghubungkan resource, manusia, komunitas, lokasi, dan data dalam satu ekosistem circular economy.
+ARVENA hadir sebagai platform digital berbasis web yang menghubungkan **resource, manusia, komunitas, lokasi, dan data** dalam satu ekosistem circular economy.
 
 ### Solusi yang Ditawarkan
 
-**ARVENA (Connected City Ecosystem)** merupakan platform digital yang membantu menghubungkan pemilik resource dengan pihak yang membutuhkan resource sekunder melalui mekanisme eksplorasi, pertukaran, permintaan, komunitas, pemetaan lokasi, dan analisis dampak.
+**ARVENA (Connected City Ecosystem)** merupakan platform digital yang membantu menghubungkan pemilik resource dengan pihak yang membutuhkan resource sekunder melalui mekanisme eksplorasi, pertukaran, permintaan, komunitas, pemetaan lokasi, artificial intelligence, serta analisis dampak.
 
-ARVENA tidak hanya berfungsi sebagai marketplace resource, tetapi dirancang sebagai ekosistem digital yang menghubungkan:
+ARVENA dirancang bukan hanya sebagai marketplace resource, tetapi sebagai ekosistem digital yang menghubungkan:
 
 - Resource sekunder
 - Masyarakat dan pelaku usaha
@@ -63,110 +56,251 @@ ARVENA tidak hanya berfungsi sebagai marketplace resource, tetapi dirancang seba
 - Informasi lokasi berbasis GIS
 - Pertukaran dan permintaan resource
 - Artificial Intelligence
-- Perhitungan dampak lingkungan
-- Data dan aktivitas ekonomi sirkular
+- Internet of Things
+- Environmental impact
+- Traceability
+- Data aktivitas ekonomi sirkular
 
-Dengan pendekatan tersebut, resource yang sebelumnya dianggap tidak bernilai dapat kembali masuk ke dalam siklus pemanfaatan.
+Dengan pendekatan tersebut, resource yang sebelumnya berpotensi menjadi limbah dapat kembali masuk ke dalam siklus pemanfaatan dan menghasilkan nilai baru.
 
 ### Tujuan Proyek
 
-- 🎯 **Tujuan Utama**: Membangun ekosistem digital yang mempercepat sirkulasi resource dan mendukung penerapan circular economy di lingkungan perkotaan.
+#### 🎯 Tujuan Utama
 
-- 📊 **Target Pengguna**: Masyarakat, mahasiswa, komunitas, organisasi, pelaku usaha, pemerintah, dan pihak lain yang terlibat dalam pemanfaatan atau pengelolaan resource sekunder.
+Membangun ekosistem digital yang membantu mempercepat sirkulasi resource, mempertemukan surplus dengan kebutuhan, dan mendukung penerapan circular economy di lingkungan perkotaan.
 
-- 💡 **Value Proposition**: ARVENA menggabungkan resource circulation, community ecosystem, GIS, artificial intelligence, dan environmental impact dalam satu platform terintegrasi.
+#### 👥 Target Pengguna
+
+ARVENA ditujukan untuk berbagai pihak yang terlibat dalam ekosistem circular economy, antara lain:
+
+- Citizen
+- Student
+- Organization
+- Business
+- Community
+- Government
+- Researcher
+
+#### 💡 Value Proposition
+
+ARVENA mengintegrasikan **resource circulation, community ecosystem, GIS, Artificial Intelligence, IoT, traceability, dan environmental impact** dalam satu platform digital.
 
 ---
 
-## ✨ Fitur Unggulan
+# ✨ Fitur Unggulan
 
-### Fitur Utama
+## Fitur Utama
 
 | Fitur | Deskripsi | Keunggulan |
-|----------|--------------|---------------|
-| **Resource Discovery** | Menemukan resource sekunder berdasarkan kebutuhan dan lokasi. | Membantu mempertemukan resource dengan pihak yang membutuhkan secara lebih relevan. |
-| **Resource Exchange** | Memungkinkan pengguna menawarkan, meminta, dan melakukan pertukaran resource. | Membentuk mekanisme sirkulasi resource antar pengguna. |
-| **CIRRA AI** | Asisten AI ARVENA untuk membantu mencari resource, memahami material, memperkirakan harga, serta memberikan insight circular economy. | Menggunakan AI untuk membuat interaksi dengan ekosistem resource menjadi lebih natural dan kontekstual. |
-| **GIS & Impact** | Menentukan lokasi, menghitung rute, jarak, serta estimasi dampak dan emisi transportasi. | Menghubungkan aktivitas resource dengan konteks geografis dan dampak lingkungan. |
-
-### Fitur Tambahan
-
-- **User Profile & Role**
-  - Mendukung berbagai peran seperti Citizen, Student, Organization, Business, Community, Government, dan Researcher.
-  - Profil dilengkapi informasi wilayah untuk meningkatkan relevansi aktivitas dalam ekosistem ARVENA.
-
-- **Community Ecosystem**
-  - Membuat dan mengelola komunitas.
-  - Sistem Admin, Moderator, dan Member.
-  - Invitation dan membership management.
-  - Community resources dan events.
-
-- **Resource Request**
-  - Pengguna dapat membuat kebutuhan resource.
-  - Sistem mendukung pencarian resource yang sesuai dengan kebutuhan.
-
-- **Resource Pricing & Negotiation**
-  - Pemilik resource dapat menentukan harga.
-  - Mendukung persentase negosiasi untuk proses pertukaran resource.
-
-- **Location-Based Resource**
-  - Resource dapat dikaitkan dengan Provinsi, Kabupaten/Kota, dan Kecamatan.
-  - Membantu pencarian resource berdasarkan wilayah.
-
-- **Environmental Impact**
-  - Memberikan estimasi dampak lingkungan dari aktivitas circular economy.
-  - Mendukung perhitungan jarak, durasi, transportasi, dan estimasi emisi.
-
-- **Multi-language Interface**
-  - Mendukung Bahasa Indonesia dan Bahasa Inggris.
-  - Mode MIX digunakan sebagai pengalaman bahasa default ARVENA.
-
-- **Authentication & Profile Security**
-  - Authentication berbasis Supabase.
-  - Data pengguna dilindungi menggunakan Row Level Security (RLS).
+|---|---|---|
+| **Resource Marketplace** | Platform untuk menemukan dan menawarkan material sirkular, surplus bahan baku, dan resource sekunder. | Mempermudah resource yang masih bernilai untuk ditemukan dan digunakan kembali. |
+| **Circular Exchange** | Mempertemukan surplus resource dengan kebutuhan melalui mekanisme pertukaran dan proposal. | Mendukung pertukaran resource secara langsung dan fleksibel. |
+| **Smart Matching** | Membantu menemukan peluang kecocokan antara resource yang tersedia dengan material yang dibutuhkan. | Mempermudah proses matching antara supply dan demand. |
+| **CIRRA AI** | Asisten AI ARVENA untuk membantu pengguna berinteraksi dengan ekosistem resource dan memperoleh insight terkait circular economy. | Membuat pencarian informasi dan eksplorasi resource lebih natural dan kontekstual. |
+| **Community Ecosystem** | Platform untuk membuat, menemukan, dan mengelola komunitas circular economy. | Menghubungkan individu dan organisasi dalam ekosistem kolaboratif. |
+| **GIS & Location** | Menghubungkan resource dan aktivitas dengan informasi geografis serta perhitungan jarak dan rute. | Membantu pengguna memahami konteks lokasi resource dan aktivitas pertukaran. |
+| **Environmental Impact** | Mengestimasi dampak lingkungan dari aktivitas circular economy, termasuk aspek transportasi dan emisi. | Membantu mengubah aktivitas sirkular menjadi informasi dampak yang terukur. |
+| **IoT Telemetry** | Menyediakan endpoint telemetry untuk mendukung integrasi data dari perangkat IoT. | Membuka peluang integrasi antara ekosistem digital dan data perangkat fisik. |
+| **Traceability** | Menyediakan halaman untuk mendukung penelusuran aktivitas/resource dalam ekosistem. | Mendorong transparansi dan integritas dalam siklus resource. |
 
 ---
 
-## 📸 Demo & Screenshot
+## Fitur Tambahan
 
-### Live Demo
+### 👤 User Profile & Role
 
-🔗 **[Kunjungi Website](https://[URL_DEMO])**
+Pengguna dapat memiliki profil berdasarkan peran dalam ekosistem:
 
-### Screenshot Aplikasi
+- Citizen
+- Student
+- Organization
+- Business
+- Community
+- Government
+- Researcher
 
-<div align="center">
+Profil juga mendukung informasi wilayah sehingga aktivitas dapat dikaitkan dengan konteks geografis.
 
-  <img src="[URL_SCREENSHOT_1]" alt="ARVENA Homepage" width="800"/>
+### ♻️ Resource Request
 
-  <p><em>Homepage - Tampilan utama ARVENA dan akses menuju ekosistem circular economy</em></p>
+Pengguna dapat membuat permintaan terhadap resource tertentu dan mencari material yang sesuai dengan kebutuhannya.
 
-  <img src="[URL_SCREENSHOT_2]" alt="ARVENA Dashboard" width="800"/>
+### 💰 Resource Pricing & Negotiation
 
-  <p><em>Dashboard - Pusat aktivitas dan informasi pengguna</em></p>
+Resource dapat memiliki informasi harga dan proses pertukaran dapat mendukung mekanisme negosiasi.
 
-  <img src="[URL_SCREENSHOT_3]" alt="ARVENA Impact" width="800"/>
+### 📍 Location-Based Resource
 
-  <p><em>Impact - Pemetaan rute dan estimasi dampak lingkungan</em></p>
+Resource dapat dikaitkan dengan informasi wilayah seperti:
 
-</div>
+- Provinsi
+- Kabupaten/Kota
+- Kecamatan
 
-### Video Demo
+Hal tersebut membantu pencarian dan pencocokan resource berdasarkan lokasi.
 
-📹 **[Link Video Demo](https://[URL_VIDEO])** _(opsional)_
+### 👥 Community Management
+
+Community Ecosystem mendukung:
+
+- Pembuatan komunitas
+- Membership
+- Community Admin
+- Moderator
+- Member
+- Invitation
+- Community resources
+- Community events
+
+Pengguna juga dapat menentukan kebijakan bergabung ke komunitas, seperti:
+
+- **Open Community**
+- **Approval Required**
+
+### 🌐 Multi-language Interface
+
+ARVENA mendukung:
+
+- Bahasa Indonesia
+- Bahasa Inggris
+
+Mode **MIX** digunakan sebagai pengalaman bahasa default pada interface tertentu.
+
+### 🔐 Authentication & Data Security
+
+ARVENA menggunakan Supabase untuk authentication dan pengelolaan data dengan dukungan Row Level Security (RLS).
 
 ---
 
-## 🛠️ Teknologi
+# 📸 Demo & Screenshot
 
-### Tech Stack
+## 🚀 Live Demo
 
-#### Frontend
+**Website:**  
+https://arvena-seven.vercel.app
 
-```text
-Framework    : Next.js 16
-Language     : TypeScript
-UI Library   : Tailwind CSS
-Icons        : Lucide React
-State Mgmt   : React Hooks & Context API
-Validation   : Client-side validation & server-side validation
+**GitHub Repository:**  
+https://github.com/ferjaarnanda/arvena
+
+---
+
+## Screenshot Aplikasi
+
+### 1. Community Creation
+
+ARVENA menyediakan mekanisme pembuatan komunitas dengan informasi seperti nama komunitas, kategori fokus, deskripsi, serta kebijakan keanggotaan.
+
+![Community Creation](docs/screenshots/community-create.png)
+
+*Community Creation — pengguna dapat membuat komunitas dan menentukan fokus serta kebijakan membership.*
+
+---
+
+### 2. Circular Exchange
+
+Halaman Circular Exchange mempertemukan surplus resource dengan material yang sedang dibutuhkan. Pengguna dapat melakukan pencarian, filtering, melihat request, serta menggunakan peluang smart matching.
+
+![Circular Exchange](docs/screenshots/circular-exchange.png)
+
+*Circular Exchange — mekanisme pertukaran resource melalui surplus, request, proposal, dan smart matching.*
+
+---
+
+### 3. Resource Marketplace
+
+Resource Marketplace memungkinkan pengguna mencari material berdasarkan nama, material, keyword, kategori, dan lokasi.
+
+Kategori resource yang tersedia mencakup antara lain:
+
+- Organic
+- Plastic
+- Paper / Cardboard
+- Metal
+- Electronic
+- Food Surplus
+- Textile
+- Other Material
+
+![Resource Marketplace](docs/screenshots/resource-marketplace.png)
+
+*Resource Marketplace — eksplorasi resource berdasarkan material, kategori, keyword, dan lokasi.*
+
+---
+
+## 🎥 Video Demo
+
+Video demo dapat ditambahkan untuk memperlihatkan alur utama ARVENA dari eksplorasi resource hingga pertukaran dan pencatatan impact.
+
+> **TODO:** Tambahkan link video demo apabila tersedia.
+
+---
+
+# 🛠️ Teknologi
+
+## Frontend
+
+| Teknologi | Penggunaan |
+|---|---|
+| **Next.js 16.3.1** | Framework utama aplikasi web |
+| **React 19.2.8** | Library antarmuka |
+| **TypeScript** | Type-safe development |
+| **Tailwind CSS 4** | Styling dan responsive UI |
+| **Lucide React** | Icon system |
+| **Leaflet** | Interactive mapping |
+| **React Leaflet** | Integrasi Leaflet dengan React |
+
+## Backend
+
+| Teknologi | Penggunaan |
+|---|---|
+| **Next.js Route Handlers** | Backend API endpoint |
+| **Supabase** | Backend platform dan database |
+| **Supabase PostgreSQL** | Penyimpanan data |
+| **Supabase Auth** | Authentication |
+| **@supabase/ssr** | Integrasi Supabase dengan server-side rendering |
+| **Google GenAI** | Integrasi AI |
+| **OpenAI SDK** | Integrasi AI |
+| **Groq SDK** | Integrasi AI |
+
+## Development & Tools
+
+| Teknologi | Penggunaan |
+|---|---|
+| **Node.js** | Runtime JavaScript |
+| **npm** | Package management |
+| **ESLint** | Code linting |
+| **Vercel** | Deployment |
+| **Git & GitHub** | Version control dan repository |
+
+---
+
+## 🧠 Alasan Pemilihan Teknologi
+
+| Teknologi | Alasan |
+|---|---|
+| **Next.js** | Mendukung pengembangan frontend dan backend API dalam satu framework serta cocok untuk aplikasi web modern berbasis App Router. |
+| **TypeScript** | Membantu meningkatkan keamanan tipe dan maintainability codebase. |
+| **Tailwind CSS** | Memungkinkan pengembangan interface yang konsisten, responsive, dan cepat dikembangkan. |
+| **Supabase** | Menyediakan database, authentication, dan backend infrastructure yang sesuai untuk aplikasi berbasis user dan data. |
+| **Leaflet** | Ringan dan fleksibel untuk membangun fitur pemetaan berbasis lokasi. |
+| **AI SDKs** | Mendukung integrasi artificial intelligence pada fitur CIRRA. |
+| **Vercel** | Mempermudah deployment aplikasi Next.js dan menyediakan environment deployment yang sesuai untuk aplikasi web modern. |
+
+---
+
+## 📦 Dependencies Utama
+
+```json
+{
+  "next": "16.3.1",
+  "react": "19.2.8",
+  "react-dom": "19.2.8",
+  "lucide-react": "^1.31.0",
+  "leaflet": "^1.9.4",
+  "react-leaflet": "^5.0.0",
+  "@supabase/ssr": "^0.12.4",
+  "@supabase/supabase-js": "^2.112.3",
+  "@google/genai": "^2.18.0",
+  "openai": "^7.5.0",
+  "groq-sdk": "^1.5.0"
+}
