@@ -1,7 +1,13 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-const PROFILE_REQUIRED_PATHS = ["/resources", "/exchange", "/community"];
+// Public browsing pages stay accessible. Profile completion is required only
+// when a user tries to create/submit something inside these flows.
+const PROFILE_REQUIRED_PATHS = [
+  "/resources/new",
+  "/exchange/new",
+  "/community/create",
+];
 
 function isProtectedPath(pathname: string) {
   return PROFILE_REQUIRED_PATHS.some(
@@ -94,6 +100,7 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
+  // Only creation flows require authentication/profile completion.
   if (!isProtectedPath(request.nextUrl.pathname)) {
     return supabaseResponse;
   }
