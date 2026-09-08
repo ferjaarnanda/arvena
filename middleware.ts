@@ -1,68 +1,19 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-// Public browsing pages stay accessible. Profile completion is required only
-// when a user tries to create/submit something inside these flows.
-const PROFILE_REQUIRED_PATHS = [
+// Public browsing pages stay accessible.
+// Creation pages require authentication, while each creation page performs
+// its own profile-completion check before allowing the user to submit.
+const AUTH_REQUIRED_PATHS = [
   "/resources/new",
   "/exchange/new",
   "/community/create",
 ];
 
-function isProtectedPath(pathname: string) {
-  return PROFILE_REQUIRED_PATHS.some(
+function isAuthRequiredPath(pathname: string) {
+  return AUTH_REQUIRED_PATHS.some(
     (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)
   );
-}
-
-function hasValue(value: string | null | undefined) {
-  return Boolean(value?.trim());
-}
-
-function isProfileComplete(profile: {
-  full_name: string | null;
-  username: string | null;
-  province: string | null;
-  province_code: string | null;
-  city: string | null;
-  city_code: string | null;
-  district: string | null;
-  district_code: string | null;
-  role: string | null;
-  organization: string | null;
-  bio: string | null;
-} | null) {
-  if (!profile) return false;
-
-  const baseComplete =
-    hasValue(profile.full_name) &&
-    hasValue(profile.username) &&
-    hasValue(profile.province) &&
-    hasValue(profile.province_code) &&
-    hasValue(profile.city) &&
-    hasValue(profile.city_code) &&
-    hasValue(profile.district) &&
-    hasValue(profile.district_code) &&
-    hasValue(profile.role);
-
-  if (!baseComplete) return false;
-
-  switch (profile.role) {
-    case "citizen":
-    case "admin":
-      return true;
-    case "student":
-    case "organization":
-    case "business":
-    case "community":
-    case "government":
-    case "other":
-      return hasValue(profile.organization);
-    case "researcher":
-      return hasValue(profile.organization) && hasValue(profile.bio);
-    default:
-      return false;
-  }
 }
 
 function copyCookies(from: NextResponse, to: NextResponse) {
@@ -100,33 +51,21 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // Only creation flows require authentication/profile completion.
-  if (!isProtectedPath(request.nextUrl.pathname)) {
+  // Browsing pages are public.
+  if (!isAuthRequiredPath(request.nextUrl.pathname)) {
     return supabaseResponse;
   }
 
+  // Creation pages require a signed-in user.
+  // Profile completion is intentionally NOT checked here because the client
+  // creation pages perform the profile check themselves. This avoids a false
+  // redirect when the browser session/profile data are temporarily out of sync.
   if (!user) {
     const loginResponse = NextResponse.redirect(
       new URL("/auth/login", request.url)
     );
     copyCookies(supabaseResponse, loginResponse);
     return loginResponse;
-  }
-
-  const { data: profile, error: profileError } = await supabase
-    .from("profiles")
-    .select(
-      "full_name, username, province, province_code, city, city_code, district, district_code, role, organization, bio"
-    )
-    .eq("id", user.id)
-    .maybeSingle();
-
-  if (profileError || !isProfileComplete(profile)) {
-    const profileResponse = NextResponse.redirect(
-      new URL("/profile", request.url)
-    );
-    copyCookies(supabaseResponse, profileResponse);
-    return profileResponse;
   }
 
   return supabaseResponse;
