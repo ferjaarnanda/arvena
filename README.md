@@ -164,7 +164,7 @@ ARVENA mendukung:
 - Bahasa Indonesia
 - Bahasa Inggris
 
-Mode **MIX** digunakan sebagai pengalaman bahasa default pada interface tertentu.
+Mode **MIX** digunakan sebagai pengalaman bahasa default pada interface.
 
 ### 🔐 Authentication & Data Security
 
@@ -258,8 +258,6 @@ Video demo dapat ditambahkan untuk memperlihatkan alur utama ARVENA dari eksplor
 | **Supabase PostgreSQL** | Penyimpanan data |
 | **Supabase Auth** | Authentication |
 | **@supabase/ssr** | Integrasi Supabase dengan server-side rendering |
-| **Google GenAI** | Integrasi AI |
-| **OpenAI SDK** | Integrasi AI |
 | **Groq SDK** | Integrasi AI |
 
 ## Development & Tools
