@@ -18,15 +18,12 @@ export default function ProfileLogout() {
       return;
     }
 
-    function syncPosition() {
-      // Use the real rendered profile header as the anchor instead of guessing
-      // its max-width. This keeps the fixed button inside the card even when
-      // the profile layout changes responsively.
-      const profileCard = document.querySelector(
-        "main > section"
-      ) as HTMLElement | null;
+    let cancelled = false;
+    let retryFrame: number | null = null;
+    let resizeObserver: ResizeObserver | null = null;
 
-      if (!profileCard) {
+    function syncPosition(profileCard: HTMLElement) {
+      if (cancelled) {
         return;
       }
 
@@ -43,13 +40,50 @@ export default function ProfileLogout() {
       });
     }
 
-    // Measure after the profile card has rendered.
-    const frame = window.requestAnimationFrame(syncPosition);
-    window.addEventListener("resize", syncPosition);
+    function findProfileCard() {
+      if (cancelled) {
+        return;
+      }
+
+      // The profile header is the first section inside the page container.
+      // Wait for it because the profile page initially renders a loading state.
+      const profileCard = document.querySelector(
+        "main > div > section"
+      ) as HTMLElement | null;
+
+      if (!profileCard) {
+        retryFrame = window.requestAnimationFrame(findProfileCard);
+        return;
+      }
+
+      syncPosition(profileCard);
+
+      resizeObserver = new ResizeObserver(() => {
+        syncPosition(profileCard);
+      });
+      resizeObserver.observe(profileCard);
+    }
+
+    findProfileCard();
+    window.addEventListener("resize", () => {
+      const profileCard = document.querySelector(
+        "main > div > section"
+      ) as HTMLElement | null;
+
+      if (profileCard) {
+        syncPosition(profileCard);
+      }
+    });
 
     return () => {
-      window.cancelAnimationFrame(frame);
-      window.removeEventListener("resize", syncPosition);
+      cancelled = true;
+
+      if (retryFrame !== null) {
+        window.cancelAnimationFrame(retryFrame);
+      }
+
+      resizeObserver?.disconnect();
+      window.removeEventListener("resize", () => undefined);
     };
   }, [pathname]);
 
@@ -60,8 +94,7 @@ export default function ProfileLogout() {
   function handleLogout() {
     const supabase = createClient();
 
-    // Local sign-out clears the current browser session without waiting for
-    // a remote session revocation request before changing pages.
+    // Clear the current browser session without blocking the redirect.
     void supabase.auth
       .signOut({ scope: "local" })
       .catch((error) => {
