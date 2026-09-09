@@ -12,9 +12,7 @@ import {
   AlertCircle,
   Camera,
   Check,
-  ImagePlus,
   Loader2,
-  MapPin,
   Plus,
   Trash2,
 } from "lucide-react";
@@ -38,6 +36,7 @@ type ProfileLocation = {
 
 const MAX_DETAIL_IMAGES = 3;
 const MAX_TOTAL_IMAGE_SIZE = 20 * 1024 * 1024;
+const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
 
 const TEXT = {
   id: {
@@ -81,28 +80,24 @@ const TEXT = {
     negotiationHelp: "Pembeli tidak dapat menawar di bawah batas minimum yang kamu tentukan.",
     minimumPrice: "Harga minimum per",
     minimumTotal: "Total minimum jika ditawar maksimal",
-    location: "Lokasi Resource",
-    locationHelp: "Tentukan wilayah transaksi resource. Secara default ARVENA menggunakan wilayah yang tersimpan di profil kamu.",
-    useProfile: "Gunakan wilayah sesuai profil saya",
-    useProfileHelp: "Resource akan menggunakan provinsi, kabupaten/kota, dan kecamatan yang tersimpan di profil kamu.",
-    profileLocation: "Wilayah dari profil",
-    manualLocation: "Pilih wilayah lain",
+    location: "Location",
+    useProfile: "Gunakan lokasi sesuai profil saya",
+    useProfileHelp: "Gunakan provinsi, kabupaten/kota, dan kecamatan yang tersimpan di profil kamu.",
     province: "Provinsi",
     city: "Kabupaten / Kota",
     district: "Kecamatan",
     loadingProvince: "Memuat provinsi...",
-    selectProvince: "Pilih provinsi",
+    selectProvince: "Pilih Provinsi",
     selectProvinceFirst: "Pilih provinsi terlebih dahulu",
     loadingCity: "Memuat kabupaten/kota...",
-    selectCity: "Pilih kabupaten/kota",
+    selectCity: "Pilih Kota",
     selectCityFirst: "Pilih kabupaten/kota terlebih dahulu",
     loadingDistrict: "Memuat kecamatan...",
-    selectDistrict: "Pilih kecamatan",
+    selectDistrict: "Pilih Kecamatan",
     images: "Foto Material",
     primaryImage: "Foto Utama",
     uploadPrimary: "Upload Foto Utama",
     uploadHint: "PNG, JPG atau WebP · Maks. 5 MB",
-    replacePrimary: "Ganti Foto",
     remove: "Hapus",
     additionalImages: "Foto Detail",
     addImage: "Tambah Foto",
@@ -122,7 +117,6 @@ const TEXT = {
     profileMissing: "Lengkapi profil dan wilayah kamu terlebih dahulu sebelum menambahkan resource.",
     profileRead: "Profil pengguna tidak dapat dibaca.",
     profileNotFound: "Data profil tidak ditemukan.",
-    regionError: "Data wilayah gagal dimuat.",
     provinceError: "Data provinsi gagal dimuat.",
     cityError: "Data kabupaten/kota gagal dimuat.",
     districtError: "Data kecamatan gagal dimuat.",
@@ -176,28 +170,24 @@ const TEXT = {
     negotiationHelp: "Buyers cannot offer below the minimum limit you set.",
     minimumPrice: "Minimum price per",
     minimumTotal: "Minimum total at maximum",
-    location: "Resource Location",
-    locationHelp: "Choose the resource transaction area. By default, ARVENA uses the location saved in your profile.",
+    location: "Location",
     useProfile: "Use my profile location",
-    useProfileHelp: "The resource will use the province, city/regency, and district saved in your profile.",
-    profileLocation: "Profile location",
-    manualLocation: "Choose another location",
+    useProfileHelp: "Use the province, city/regency, and district saved in your profile.",
     province: "Province",
     city: "City / Regency",
     district: "District",
     loadingProvince: "Loading provinces...",
-    selectProvince: "Select province",
+    selectProvince: "Select Province",
     selectProvinceFirst: "Select a province first",
     loadingCity: "Loading cities...",
-    selectCity: "Select city / regency",
+    selectCity: "Select City",
     selectCityFirst: "Select a city / regency first",
     loadingDistrict: "Loading districts...",
-    selectDistrict: "Select district",
+    selectDistrict: "Select District",
     images: "Material Images",
     primaryImage: "Primary Image",
     uploadPrimary: "Upload Primary Photo",
     uploadHint: "PNG, JPG or WebP · Max. 5 MB",
-    replacePrimary: "Change Photo",
     remove: "Remove",
     additionalImages: "Detail Images",
     addImage: "Add Image",
@@ -217,7 +207,6 @@ const TEXT = {
     profileMissing: "Complete your profile and location before adding a resource.",
     profileRead: "Unable to read your profile.",
     profileNotFound: "Profile data was not found.",
-    regionError: "Unable to load location data.",
     provinceError: "Unable to load provinces.",
     cityError: "Unable to load cities.",
     districtError: "Unable to load districts.",
@@ -316,6 +305,62 @@ export default function NewResourcePage() {
     return true;
   }
 
+  async function loadCities(provinceCode: string) {
+    if (!provinceCode) {
+      setCities([]);
+      return;
+    }
+
+    setLoadingCities(true);
+    try {
+      const response = await fetch(`/api/regions/regencies/${encodeURIComponent(provinceCode)}`, {
+        cache: "no-store",
+      });
+      if (!response.ok) throw new Error("city request failed");
+      const result = await response.json();
+      if (!Array.isArray(result?.data)) throw new Error("invalid city response");
+      setCities(
+        [...result.data].sort((a, b) =>
+          a.name.localeCompare(b.name, "id", { sensitivity: "base" })
+        )
+      );
+    } catch (err) {
+      console.error("LOAD CITIES ERROR:", err);
+      setCities([]);
+      setRegionError(t.cityError);
+    } finally {
+      setLoadingCities(false);
+    }
+  }
+
+  async function loadDistricts(cityCode: string) {
+    if (!cityCode) {
+      setDistricts([]);
+      return;
+    }
+
+    setLoadingDistricts(true);
+    try {
+      const response = await fetch(`/api/regions/districts/${encodeURIComponent(cityCode)}`, {
+        cache: "no-store",
+      });
+      if (!response.ok) throw new Error("district request failed");
+      const result = await response.json();
+      if (!Array.isArray(result?.data)) throw new Error("invalid district response");
+      setDistricts(
+        [...result.data].sort((a, b) =>
+          a.name.localeCompare(b.name, "id", { sensitivity: "base" })
+        )
+      );
+    } catch (err) {
+      console.error("LOAD DISTRICTS ERROR:", err);
+      setDistricts([]);
+      setRegionError(t.districtError);
+    } finally {
+      setLoadingDistricts(false);
+    }
+  }
+
   async function loadProfile() {
     try {
       const { data: { user }, error: userError } = await supabase.auth.getUser();
@@ -341,7 +386,14 @@ export default function NewResourcePage() {
         return;
       }
 
-      if (!profile.province || !profile.province_code || !profile.city || !profile.city_code || !profile.district || !profile.district_code) {
+      if (
+        !profile.province ||
+        !profile.province_code ||
+        !profile.city ||
+        !profile.city_code ||
+        !profile.district ||
+        !profile.district_code
+      ) {
         setError(t.profileMissing);
         window.setTimeout(() => router.push("/profile"), 1500);
         return;
@@ -367,6 +419,11 @@ export default function NewResourcePage() {
         district_code: location.district_code,
       }));
       setUseProfileLocation(true);
+
+      await Promise.all([
+        loadCities(location.province_code),
+        loadDistricts(location.city_code),
+      ]);
     } catch (err) {
       console.error("PROFILE LOAD ERROR:", err);
       setError(t.profileRead);
@@ -381,7 +438,11 @@ export default function NewResourcePage() {
       if (!response.ok) throw new Error("province request failed");
       const result = await response.json();
       if (!Array.isArray(result?.data)) throw new Error("invalid province response");
-      setProvinces([...result.data].sort((a, b) => a.name.localeCompare(b.name, "id", { sensitivity: "base" })));
+      setProvinces(
+        [...result.data].sort((a, b) =>
+          a.name.localeCompare(b.name, "id", { sensitivity: "base" })
+        )
+      );
     } catch (err) {
       console.error("LOAD PROVINCES ERROR:", err);
       setProvinces([]);
@@ -391,55 +452,12 @@ export default function NewResourcePage() {
     }
   }
 
-  async function loadCities(provinceCode: string) {
-    if (!provinceCode) {
-      setCities([]);
-      return;
-    }
-    setLoadingCities(true);
-    setRegionError("");
-    try {
-      const response = await fetch(`/api/regions/regencies/${encodeURIComponent(provinceCode)}`, { cache: "no-store" });
-      if (!response.ok) throw new Error("city request failed");
-      const result = await response.json();
-      if (!Array.isArray(result?.data)) throw new Error("invalid city response");
-      setCities([...result.data].sort((a, b) => a.name.localeCompare(b.name, "id", { sensitivity: "base" })));
-    } catch (err) {
-      console.error("LOAD CITIES ERROR:", err);
-      setCities([]);
-      setRegionError(t.cityError);
-    } finally {
-      setLoadingCities(false);
-    }
-  }
-
-  async function loadDistricts(cityCode: string) {
-    if (!cityCode) {
-      setDistricts([]);
-      return;
-    }
-    setLoadingDistricts(true);
-    setRegionError("");
-    try {
-      const response = await fetch(`/api/regions/districts/${encodeURIComponent(cityCode)}`, { cache: "no-store" });
-      if (!response.ok) throw new Error("district request failed");
-      const result = await response.json();
-      if (!Array.isArray(result?.data)) throw new Error("invalid district response");
-      setDistricts([...result.data].sort((a, b) => a.name.localeCompare(b.name, "id", { sensitivity: "base" })));
-    } catch (err) {
-      console.error("LOAD DISTRICTS ERROR:", err);
-      setDistricts([]);
-      setRegionError(t.districtError);
-    } finally {
-      setLoadingDistricts(false);
-    }
-  }
-
   useEffect(() => {
     const timer = window.setTimeout(() => {
       void loadProfile();
       void loadProvinces();
     }, 0);
+
     return () => window.clearTimeout(timer);
   }, []);
 
@@ -447,6 +465,7 @@ export default function NewResourcePage() {
     setUseProfileLocation(false);
     const code = e.target.value;
     const province = provinces.find((item) => item.code === code);
+
     setForm((previous) => ({
       ...previous,
       province: province?.name || "",
@@ -456,16 +475,19 @@ export default function NewResourcePage() {
       district: "",
       district_code: "",
     }));
+
     setCities([]);
     setDistricts([]);
-    if (province?.code) void loadCities(province.code);
     setError("");
+
+    if (province?.code) void loadCities(province.code);
   }
 
   function handleCityChange(e: React.ChangeEvent<HTMLSelectElement>) {
     setUseProfileLocation(false);
     const code = e.target.value;
     const city = cities.find((item) => item.code === code);
+
     setForm((previous) => ({
       ...previous,
       city: city?.name || "",
@@ -473,15 +495,18 @@ export default function NewResourcePage() {
       district: "",
       district_code: "",
     }));
+
     setDistricts([]);
-    if (city?.code) void loadDistricts(city.code);
     setError("");
+
+    if (city?.code) void loadDistricts(city.code);
   }
 
   function handleDistrictChange(e: React.ChangeEvent<HTMLSelectElement>) {
     setUseProfileLocation(false);
     const code = e.target.value;
     const district = districts.find((item) => item.code === code);
+
     setForm((previous) => ({
       ...previous,
       district: district?.name || "",
@@ -490,7 +515,9 @@ export default function NewResourcePage() {
     setError("");
   }
 
-  function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) {
+  function handleChange(
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+  ) {
     const { name, value } = e.target;
     setForm((previous) => ({ ...previous, [name]: value }));
     setError("");
@@ -514,16 +541,17 @@ export default function NewResourcePage() {
       setError(t.invalidImage(file.name));
       return;
     }
-    if (file.size > 5 * 1024 * 1024) {
+
+    if (file.size > MAX_IMAGE_SIZE) {
       setError(t.totalImageLimit(formatFileSize(file.size)));
       return;
     }
+
     if (!validateImageSize(file, detailImages)) return;
 
     if (mainPreview) URL.revokeObjectURL(mainPreview);
-    const preview = URL.createObjectURL(file);
     setMainImage(file);
-    setMainPreview(preview);
+    setMainPreview(URL.createObjectURL(file));
     setError("");
   }
 
@@ -551,7 +579,7 @@ export default function NewResourcePage() {
         setError(t.invalidImage(file.name));
         return;
       }
-      if (file.size > 5 * 1024 * 1024) {
+      if (file.size > MAX_IMAGE_SIZE) {
         setError(t.totalImageLimit(formatFileSize(file.size)));
         return;
       }
@@ -578,6 +606,7 @@ export default function NewResourcePage() {
   function handleProfileLocationToggle(checked: boolean) {
     setUseProfileLocation(checked);
     setError("");
+
     if (checked) {
       setForm((previous) => ({
         ...previous,
@@ -588,6 +617,13 @@ export default function NewResourcePage() {
         district: profileLocation.district,
         district_code: profileLocation.district_code,
       }));
+
+      if (profileLocation.province_code) {
+        void loadCities(profileLocation.province_code);
+      }
+      if (profileLocation.city_code) {
+        void loadDistricts(profileLocation.city_code);
+      }
     } else {
       setForm((previous) => ({
         ...previous,
@@ -786,15 +822,9 @@ export default function NewResourcePage() {
 
         <form onSubmit={handleSubmit} className="space-y-5">
           <section className="rounded-2xl border border-white/10 bg-white/[0.02] p-5 sm:p-6">
-            <div className="mb-5 flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-emerald-400/20 bg-emerald-400/10 text-emerald-300">
-                <ImagePlus className="h-4 w-4" />
-              </div>
-              <div>
-                <h2 className="text-sm font-semibold uppercase tracking-[0.15em] text-white/70">{t.basic}</h2>
-                <p className="mt-0.5 text-xs text-white/30">{t.description}</p>
-              </div>
-            </div>
+            <h2 className="mb-5 text-sm font-semibold uppercase tracking-[0.15em] text-white/70">
+              {t.basic}
+            </h2>
 
             <div className="space-y-4">
               <div>
@@ -951,17 +981,11 @@ export default function NewResourcePage() {
           </section>
 
           <section className="rounded-2xl border border-white/10 bg-white/[0.02] p-5 sm:p-6">
-            <div className="mb-5 flex items-start gap-3">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-emerald-400/20 bg-emerald-400/10 text-emerald-300">
-                <MapPin className="h-4 w-4" />
-              </div>
-              <div>
-                <h2 className="text-sm font-semibold uppercase tracking-[0.15em] text-white/70">{t.location}</h2>
-                <p className="mt-1 text-xs leading-5 text-white/35">{t.locationHelp}</p>
-              </div>
-            </div>
+            <h2 className="mb-5 text-sm font-semibold uppercase tracking-[0.15em] text-white/70">
+              {t.location}
+            </h2>
 
-            <div className="rounded-xl border border-emerald-400/10 bg-emerald-400/[0.035] p-4">
+            <div className="mb-5 rounded-xl border border-emerald-400/10 bg-emerald-400/[0.035] p-4">
               <label className="flex cursor-pointer items-start gap-3">
                 <input
                   type="checkbox"
@@ -973,85 +997,76 @@ export default function NewResourcePage() {
                 <div className="min-w-0">
                   <p className="text-sm font-medium text-white">{t.useProfile}</p>
                   <p className="mt-1 text-xs leading-5 text-white/35">{t.useProfileHelp}</p>
-                  {useProfileLocation && profileLocation.province && (
-                    <div className="mt-3 rounded-lg border border-white/10 bg-black/10 px-3 py-2">
-                      <p className="text-[10px] uppercase tracking-wider text-white/25">{t.profileLocation}</p>
-                      <p className="mt-1 text-xs text-emerald-300">
-                        {profileLocation.province} → {profileLocation.city} → {profileLocation.district}
-                      </p>
-                    </div>
-                  )}
                 </div>
               </label>
             </div>
 
-            {!useProfileLocation && (
-              <div className="mt-4 space-y-4">
-                <p className="text-xs text-white/35">{t.manualLocation}</p>
-                <div className="grid gap-4 sm:grid-cols-3">
-                  <div>
-                    <label className="mb-1.5 block text-xs font-medium text-white/60">{t.province}</label>
-                    <select
-                      value={form.province_code}
-                      onChange={handleProvinceChange}
-                      required
-                      disabled={profileLoading || loadingProvinces}
-                      className="w-full rounded-xl border border-white/10 bg-[#0b1d17] px-3 py-2.5 text-sm text-white outline-none focus:border-emerald-400/50 disabled:cursor-not-allowed disabled:opacity-50 [&>option]:bg-[#0b1d17] [&>option]:text-white"
-                    >
-                      <option value="">{loadingProvinces ? t.loadingProvince : t.selectProvince}</option>
-                      {provinces.map((province) => <option key={province.code} value={province.code}>{province.name}</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="mb-1.5 block text-xs font-medium text-white/60">{t.city}</label>
-                    <select
-                      value={form.city_code}
-                      onChange={handleCityChange}
-                      required
-                      disabled={profileLoading || !form.province_code || loadingCities}
-                      className="w-full rounded-xl border border-white/10 bg-[#0b1d17] px-3 py-2.5 text-sm text-white outline-none focus:border-emerald-400/50 disabled:cursor-not-allowed disabled:opacity-50 [&>option]:bg-[#0b1d17] [&>option]:text-white"
-                    >
-                      <option value="">
-                        {!form.province_code ? t.selectProvinceFirst : loadingCities ? t.loadingCity : t.selectCity}
-                      </option>
-                      {cities.map((city) => <option key={city.code} value={city.code}>{city.name}</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="mb-1.5 block text-xs font-medium text-white/60">{t.district}</label>
-                    <select
-                      value={form.district_code}
-                      onChange={handleDistrictChange}
-                      required
-                      disabled={profileLoading || !form.city_code || loadingDistricts}
-                      className="w-full rounded-xl border border-white/10 bg-[#0b1d17] px-3 py-2.5 text-sm text-white outline-none focus:border-emerald-400/50 disabled:cursor-not-allowed disabled:opacity-50 [&>option]:bg-[#0b1d17] [&>option]:text-white"
-                    >
-                      <option value="">
-                        {!form.city_code ? t.selectCityFirst : loadingDistricts ? t.loadingDistrict : t.selectDistrict}
-                      </option>
-                      {districts.map((district) => <option key={district.code} value={district.code}>{district.name}</option>)}
-                    </select>
-                  </div>
-                </div>
-                {regionError && (
-                  <div className="flex items-start gap-2 rounded-xl border border-amber-300/10 bg-amber-300/[0.035] px-3 py-2.5 text-xs text-amber-200/70">
-                    <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-                    <span>{regionError}</span>
-                  </div>
-                )}
+            <div className="grid gap-4 sm:grid-cols-3">
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-white/60">{t.province}</label>
+                <select
+                  value={form.province_code}
+                  onChange={handleProvinceChange}
+                  required
+                  disabled={profileLoading || loadingProvinces}
+                  className="w-full rounded-xl border border-white/10 bg-[#0b1d17] px-3 py-2.5 text-sm text-white outline-none focus:border-emerald-400/50 disabled:cursor-not-allowed disabled:opacity-50 [&>option]:bg-[#0b1d17] [&>option]:text-white"
+                >
+                  <option value="">{loadingProvinces ? t.loadingProvince : t.selectProvince}</option>
+                  {provinces.map((province) => (
+                    <option key={province.code} value={province.code}>{province.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-white/60">{t.city}</label>
+                <select
+                  value={form.city_code}
+                  onChange={handleCityChange}
+                  required
+                  disabled={profileLoading || !form.province_code || loadingCities}
+                  className="w-full rounded-xl border border-white/10 bg-[#0b1d17] px-3 py-2.5 text-sm text-white outline-none focus:border-emerald-400/50 disabled:cursor-not-allowed disabled:opacity-50 [&>option]:bg-[#0b1d17] [&>option]:text-white"
+                >
+                  <option value="">
+                    {!form.province_code ? t.selectProvinceFirst : loadingCities ? t.loadingCity : t.selectCity}
+                  </option>
+                  {cities.map((city) => (
+                    <option key={city.code} value={city.code}>{city.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-white/60">{t.district}</label>
+                <select
+                  value={form.district_code}
+                  onChange={handleDistrictChange}
+                  required
+                  disabled={profileLoading || !form.city_code || loadingDistricts}
+                  className="w-full rounded-xl border border-white/10 bg-[#0b1d17] px-3 py-2.5 text-sm text-white outline-none focus:border-emerald-400/50 disabled:cursor-not-allowed disabled:opacity-50 [&>option]:bg-[#0b1d17] [&>option]:text-white"
+                >
+                  <option value="">
+                    {!form.city_code ? t.selectCityFirst : loadingDistricts ? t.loadingDistrict : t.selectDistrict}
+                  </option>
+                  {districts.map((district) => (
+                    <option key={district.code} value={district.code}>{district.name}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {regionError && (
+              <div className="mt-4 flex items-start gap-2 rounded-xl border border-amber-300/10 bg-amber-300/[0.035] px-3 py-2.5 text-xs text-amber-200/70">
+                <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                <span>{regionError}</span>
               </div>
             )}
           </section>
 
           <section className="rounded-2xl border border-white/10 bg-white/[0.02] p-5 sm:p-6">
-            <div className="mb-5 flex items-start gap-3">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-emerald-400/20 bg-emerald-400/10 text-emerald-300">
-                <Camera className="h-4 w-4" />
-              </div>
-              <div>
-                <h2 className="text-sm font-semibold uppercase tracking-[0.15em] text-white/70">{t.images}</h2>
-                <p className="mt-1 text-xs text-white/35">{t.maxPerImage} · {MAX_DETAIL_IMAGES} {t.imagesCount}</p>
-              </div>
+            <div className="mb-5">
+              <h2 className="text-sm font-semibold uppercase tracking-[0.15em] text-white/70">{t.images}</h2>
+              <p className="mt-1 text-xs text-white/35">{t.maxPerImage} · {MAX_DETAIL_IMAGES} {t.imagesCount}</p>
             </div>
 
             <div>
@@ -1073,10 +1088,8 @@ export default function NewResourcePage() {
                   </div>
                 </div>
               ) : (
-                <label className="group flex min-h-[180px] cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed border-emerald-400/30 bg-emerald-400/[0.035] px-6 py-10 text-center transition hover:border-emerald-400/50 hover:bg-emerald-400/[0.055]">
-                  <span className="flex h-12 w-12 items-center justify-center rounded-2xl border border-emerald-400/20 bg-emerald-400/10 text-emerald-300 transition group-hover:scale-105">
-                    <Camera className="h-6 w-6" />
-                  </span>
+                <label className="group flex min-h-[180px] cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed border-white/20 bg-white/[0.02] px-6 py-10 text-center transition hover:border-emerald-400/30 hover:bg-white/[0.04]">
+                  <Camera className="h-6 w-6 text-emerald-400/70" />
                   <span className="mt-3 text-sm font-semibold text-white/75">{t.uploadPrimary}</span>
                   <span className="mt-1 text-xs text-white/35">{t.uploadHint}</span>
                   <input type="file" accept="image/*" onChange={handleMainImageChange} className="hidden" />
@@ -1131,7 +1144,10 @@ export default function NewResourcePage() {
                 </div>
               </div>
               <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-white/10">
-                <div className="h-full rounded-full bg-emerald-300 transition-all" style={{ width: `${Math.min((totalImageSize / MAX_TOTAL_IMAGE_SIZE) * 100, 100)}%` }} />
+                <div
+                  className="h-full rounded-full bg-emerald-300 transition-all"
+                  style={{ width: `${Math.min((totalImageSize / MAX_TOTAL_IMAGE_SIZE) * 100, 100)}%` }}
+                />
               </div>
             </div>
           </section>
@@ -1159,7 +1175,11 @@ export default function NewResourcePage() {
               disabled={loading || profileLoading}
               className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-[#12544F] bg-[#2A835F] py-3 text-sm font-bold text-white shadow-[0_4px_16px_rgba(42,131,95,0.25)] transition-all hover:-translate-y-0.5 hover:bg-[#32a070] disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {loading ? <><Loader2 className="h-4 w-4 animate-spin" />{t.saving}</> : <><Check className="h-4 w-4" />{t.save}</>}
+              {loading ? (
+                <><Loader2 className="h-4 w-4 animate-spin" />{t.saving}</>
+              ) : (
+                <><Check className="h-4 w-4" />{t.save}</>
+              )}
             </button>
           </div>
         </form>
