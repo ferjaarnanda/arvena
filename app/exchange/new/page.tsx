@@ -1015,6 +1015,7 @@ export default function ExchangeNewPage() {
                 </select>
               </div>
             </div>
+              </div>
           </div>
 
           {error && (
