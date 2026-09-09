@@ -1,9 +1,7 @@
 name: Apply Exchange Location Fix
 
 on:
-  push:
-    paths:
-      - .github/workflows/apply-exchange-location-fix.yml
+  workflow_dispatch:
 
 permissions:
   contents: write
