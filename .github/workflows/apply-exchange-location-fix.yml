@@ -1,0 +1,87 @@
+name: Apply Exchange Location Fix
+
+on:
+  push:
+    paths:
+      - .github/workflows/apply-exchange-location-fix.yml
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Patch exchange location UI and profile autofill
+        shell: python
+        run: |
+          from pathlib import Path
+
+          path = Path("app/exchange/new/page.tsx")
+          text = path.read_text()
+
+          text = text.replace(
+              '''type Region = {\n  code: string;\n  name: string;\n};\n''',
+              '''type Region = {\n  code: string;\n  name: string;\n};\n\ntype ProfileLocation = {\n  province: string;\n  province_code: string;\n  city: string;\n  city_code: string;\n  district: string;\n  district_code: string;\n};\n''',
+              1,
+          )
+
+          text = text.replace(
+              '''  const [selectedProvince, setSelectedProvince] = useState(\"\");\n  const [selectedCity, setSelectedCity] = useState(\"\");\n  const [selectedDistrict, setSelectedDistrict] = useState(\"\");\n\n  const [primaryImageFile''',
+              '''  const [selectedProvince, setSelectedProvince] = useState(\"\");\n  const [selectedCity, setSelectedCity] = useState(\"\");\n  const [selectedDistrict, setSelectedDistrict] = useState(\"\");\n  const [profileLoading, setProfileLoading] = useState(true);\n  const [useProfileLocation, setUseProfileLocation] = useState(true);\n  const [profileLocation, setProfileLocation] = useState<ProfileLocation>({\n    province: \"\",\n    province_code: \"\",\n    city: \"\",\n    city_code: \"\",\n    district: \"\",\n    district_code: \"\",\n  });\n\n  const [primaryImageFile''',
+              1,
+          )
+
+          marker = '''  useEffect(() => {\n    async function loadProvinces() {'''
+          insert = '''  useEffect(() => {\n    if (!userId) return;\n\n    let mounted = true;\n\n    async function loadProfileLocation() {\n      setProfileLoading(true);\n\n      try {\n        const { data: profile, error: profileError } = await supabase\n          .from(\"profiles\")\n          .select(\"province, province_code, city, city_code, district, district_code\")\n          .eq(\"id\", userId)\n          .single();\n\n        if (!mounted) return;\n\n        if (profileError || !profile) {\n          setUseProfileLocation(false);\n          return;\n        }\n\n        const location: ProfileLocation = {\n          province: profile.province || \"\",\n          province_code: profile.province_code || \"\",\n          city: profile.city || \"\",\n          city_code: profile.city_code || \"\",\n          district: profile.district || \"\",\n          district_code: profile.district_code || \"\",\n        };\n\n        setProfileLocation(location);\n\n        const complete = Boolean(\n          location.province_code && location.city_code && location.district_code\n        );\n\n        if (!complete) {\n          setUseProfileLocation(false);\n          return;\n        }\n\n        setSelectedProvince(location.province_code);\n        setSelectedCity(location.city_code);\n        setSelectedDistrict(location.district_code);\n        setUseProfileLocation(true);\n\n        try {\n          const cityResponse = await fetch(\n            `/api/regions/regencies/${encodeURIComponent(location.province_code)}`,\n            { cache: \"no-store\" }\n          );\n          if (cityResponse.ok) {\n            const cityResult = await cityResponse.json();\n            const cityData = Array.isArray(cityResult)\n              ? cityResult\n              : Array.isArray(cityResult?.data)\n                ? cityResult.data\n                : Array.isArray(cityResult?.regencies)\n                  ? cityResult.regencies\n                  : [];\n            if (mounted) setCities(cityData);\n          }\n\n          const districtResponse = await fetch(\n            `/api/regions/districts/${encodeURIComponent(location.city_code)}`,\n            { cache: \"no-store\" }\n          );\n          if (districtResponse.ok) {\n            const districtResult = await districtResponse.json();\n            const districtData = Array.isArray(districtResult)\n              ? districtResult\n              : Array.isArray(districtResult?.data)\n                ? districtResult.data\n                : Array.isArray(districtResult?.districts)\n                  ? districtResult.districts\n                  : [];\n            if (mounted) setDistricts(districtData);\n          }\n        } catch (regionErr) {\n          console.error(\"LOAD PROFILE REGIONS ERROR:\", regionErr);\n        }\n      } catch (err) {\n        console.error(\"LOAD PROFILE LOCATION ERROR:\", err);\n        if (mounted) setUseProfileLocation(false);\n      } finally {\n        if (mounted) setProfileLoading(false);\n      }\n    }\n\n    void loadProfileLocation();\n\n    return () => {\n      mounted = false;\n    };\n  }, [userId, supabase]);\n\n'''
+          if marker not in text:
+              raise SystemExit("province effect marker not found")
+          text = text.replace(marker, insert + marker, 1)
+
+          text = text.replace(
+              '''  function validateImage(file: File): boolean {''',
+              '''  function handleProfileLocationToggle(checked: boolean) {\n    setUseProfileLocation(checked);\n    setError(null);\n\n    if (checked) {\n      setSelectedProvince(profileLocation.province_code);\n      setSelectedCity(profileLocation.city_code);\n      setSelectedDistrict(profileLocation.district_code);\n      return;\n    }\n\n    setSelectedProvince(\"\");\n    setSelectedCity(\"\");\n    setSelectedDistrict(\"\");\n    setCities([]);\n    setDistricts([]);\n  }\n\n  function validateImage(file: File): boolean {''',
+              1,
+          )
+
+          text = text.replace(
+              '''  async function handleProvinceChange(code: string) {\n    setSelectedProvince(code);''',
+              '''  async function handleProvinceChange(code: string) {\n    setUseProfileLocation(false);\n    setSelectedProvince(code);''',
+              1,
+          )
+          text = text.replace(
+              '''  async function handleCityChange(code: string) {\n    setSelectedCity(code);''',
+              '''  async function handleCityChange(code: string) {\n    setUseProfileLocation(false);\n    setSelectedCity(code);''',
+              1,
+          )
+
+          old_location = '''          <div className=\"rounded-2xl border border-white/10 bg-white/[0.02] p-5 space-y-4\">\n            <label className=\"block text-xs font-semibold uppercase tracking-[0.15em] text-white/50\">\n              {t.common.location}\n            </label>\n\n            <div className=\"grid gap-4 sm:grid-cols-3\">'''
+          new_location = '''          <div className=\"rounded-2xl border border-white/10 bg-white/[0.02] p-5 sm:p-6\">\n            <h2 className=\"mb-5 text-sm font-semibold uppercase tracking-[0.15em] text-white/70\">\n              {t.common.location}\n            </h2>\n\n            <div className=\"mx-auto max-w-2xl\">\n              <label className=\"mb-5 flex cursor-pointer items-center gap-3\">\n                <input\n                  type=\"checkbox\"\n                  checked={useProfileLocation}\n                  onChange={(e) => handleProfileLocationToggle(e.target.checked)}\n                  disabled={profileLoading}\n                  className=\"h-4 w-4 accent-emerald-300\"\n                />\n                <span className=\"text-sm font-medium text-white\">\n                  {locale === \"id\" ? \"Gunakan lokasi sesuai profil saya\" : \"Use my profile location\"}\n                </span>\n              </label>\n\n              <div className=\"grid gap-4 sm:grid-cols-3\">'''
+          if old_location not in text:
+              raise SystemExit("location opening block not found")
+          text = text.replace(old_location, new_location, 1)
+
+          path.write_text(text)
+
+          workflow = Path(".github/workflows/apply-exchange-location-fix.yml")
+          workflow_text = workflow.read_text()
+          workflow_text = workflow_text.replace(
+              '''on:\n  push:\n    paths:\n      - .github/workflows/apply-exchange-location-fix.yml\n''',
+              '''on:\n  workflow_dispatch:\n''',
+              1,
+          )
+          workflow.write_text(workflow_text)
+
+      - name: Commit changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/exchange/new/page.tsx .github/workflows/apply-exchange-location-fix.yml
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+          git commit -m "Add profile location to exchange form"
+          git push
