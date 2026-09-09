@@ -40,16 +40,28 @@ export default function ProfileLogout() {
       });
     }
 
+    function getProfileCard() {
+      return document.querySelector(
+        "main > div > section"
+      ) as HTMLElement | null;
+    }
+
+    function handleResize() {
+      const profileCard = getProfileCard();
+
+      if (profileCard) {
+        syncPosition(profileCard);
+      }
+    }
+
     function findProfileCard() {
       if (cancelled) {
         return;
       }
 
-      // The profile header is the first section inside the page container.
-      // Wait for it because the profile page initially renders a loading state.
-      const profileCard = document.querySelector(
-        "main > div > section"
-      ) as HTMLElement | null;
+      // The profile page initially renders a loading state, so wait until
+      // the real profile header card exists before calculating its position.
+      const profileCard = getProfileCard();
 
       if (!profileCard) {
         retryFrame = window.requestAnimationFrame(findProfileCard);
@@ -65,15 +77,7 @@ export default function ProfileLogout() {
     }
 
     findProfileCard();
-    window.addEventListener("resize", () => {
-      const profileCard = document.querySelector(
-        "main > div > section"
-      ) as HTMLElement | null;
-
-      if (profileCard) {
-        syncPosition(profileCard);
-      }
-    });
+    window.addEventListener("resize", handleResize);
 
     return () => {
       cancelled = true;
@@ -83,7 +87,7 @@ export default function ProfileLogout() {
       }
 
       resizeObserver?.disconnect();
-      window.removeEventListener("resize", () => undefined);
+      window.removeEventListener("resize", handleResize);
     };
   }, [pathname]);
 
