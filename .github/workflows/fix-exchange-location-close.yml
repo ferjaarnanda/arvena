@@ -20,16 +20,14 @@ jobs:
         shell: python
         run: |
           from pathlib import Path
-          import re
           import subprocess
 
           base_sha = "5e6cadef4f3546e20429ac3629da2539c993a192"
           path = Path("app/exchange/new/page.tsx")
-          base = subprocess.check_output(
+          text = subprocess.check_output(
               ["git", "show", f"{base_sha}:app/exchange/new/page.tsx"],
               text=True,
           )
-          text = base
 
           text = text.replace(
               '''type Region = {\n  code: string;\n  name: string;\n};\n''',
@@ -60,11 +58,11 @@ jobs:
               1,
           )
 
-          toggle = '''\n  function handleProfileLocationToggle(checked: boolean) {\n    setUseProfileLocation(checked);\n    setError(null);\n\n    if (checked) {\n      setSelectedProvince(profileLocation.province_code);\n      setSelectedCity(profileLocation.city_code);\n      setSelectedDistrict(profileLocation.district_code);\n\n      if (profileLocation.province_code) {\n        void (async () => {\n          try {\n            const response = await fetch(\n              `/api/regions/regencies/${encodeURIComponent(profileLocation.province_code)}`,\n              { cache: "no-store" }\n            );\n            if (!response.ok) return;\n            const result = await response.json();\n            const data = Array.isArray(result?.data) ? result.data : Array.isArray(result) ? result : [];\n            setCities(data);\n          } catch (err) {\n            console.error("LOAD PROFILE CITIES ERROR:", err);\n          }\n        })();\n      }\n\n      if (profileLocation.city_code) {\n        void (async () => {\n          try {\n            const response = await fetch(\n              `/api/regions/districts/${encodeURIComponent(profileLocation.city_code)}`,\n              { cache: "no-store" }\n            );\n            if (!response.ok) return;\n            const result = await response.json();\n            const data = Array.isArray(result?.data) ? result.data : Array.isArray(result) ? result : [];\n            setDistricts(data);\n          } catch (err) {\n            console.error("LOAD PROFILE DISTRICTS ERROR:", err);\n          }\n        })();\n      }\n      return;\n    }\n\n    setSelectedProvince("");\n    setSelectedCity("");\n    setSelectedDistrict("");\n    setCities([]);\n    setDistricts([]);\n  }\n'''
-          validate_marker = '''\n  function validateImage(file: File): boolean {'''
-          if validate_marker not in text:
+          toggle = '''\n  function handleProfileLocationToggle(checked: boolean) {\n    setUseProfileLocation(checked);\n    setError(null);\n\n    if (checked) {\n      setSelectedProvince(profileLocation.province_code);\n      setSelectedCity(profileLocation.city_code);\n      setSelectedDistrict(profileLocation.district_code);\n      return;\n    }\n\n    setSelectedProvince("");\n    setSelectedCity("");\n    setSelectedDistrict("");\n    setCities([]);\n    setDistricts([]);\n  }\n'''
+          marker = '''\n  function validateImage(file: File): boolean {'''
+          if marker not in text:
               raise SystemExit("validate marker not found")
-          text = text.replace(validate_marker, toggle + validate_marker, 1)
+          text = text.replace(marker, toggle + marker, 1)
 
           text = text.replace(
               '''                  onChange={(e) => setSelectedDistrict(e.target.value)}''',
@@ -73,16 +71,16 @@ jobs:
           )
 
           lines = text.splitlines(True)
-          image_heading = next(i for i, line in enumerate(lines) if '"Foto Material"' in line or '"Material Images"' in line)
-          image_start = next(i for i in range(image_heading, len(lines)) if 'rounded-2xl border border-white/10 bg-white/[0.02] p-5 space-y-4' in lines[i])
-          location_heading = next(i for i in range(image_start, len(lines)) if '{t.common.location}' in lines[i])
-          location_start = max(i for i in range(location_heading, -1, -1) if 'rounded-2xl border border-white/10 bg-white/[0.02] p-5 space-y-4' in lines[i])
+          outer = [i for i, line in enumerate(lines) if 'rounded-2xl border border-white/10 bg-white/[0.02] p-5 space-y-4' in line]
+          if len(outer) != 2:
+              raise SystemExit(f"expected 2 form sections, found {len(outer)}")
+          image_start, location_start = outer
 
           depth = 0
           location_end = None
           for i in range(location_start, len(lines)):
-              depth += len(re.findall(r'<div\\b', lines[i]))
-              depth -= len(re.findall(r'</div>', lines[i]))
+              depth += lines[i].count("<div")
+              depth -= lines[i].count("</div>")
               if i > location_start and depth == 0:
                   location_end = i + 1
                   break
@@ -91,11 +89,9 @@ jobs:
 
           location_block = lines[location_start:location_end]
           del lines[location_start:location_end]
-          image_start = next(i for i, line in enumerate(lines) if 'Foto Material' in line or 'Material Images' in line)
-          image_start = next(i for i in range(image_start, len(lines)) if 'rounded-2xl border border-white/10 bg-white/[0.02] p-5 space-y-4' in lines[i])
+          image_start = next(i for i, line in enumerate(lines) if 'rounded-2xl border border-white/10 bg-white/[0.02] p-5 space-y-4' in line)
 
           heading_idx = next(i for i, line in enumerate(location_block) if '{t.common.location}' in line)
-          insert_idx = heading_idx + 1
           checkbox = [
               '\n',
               '            <label className="mb-5 flex cursor-pointer items-center gap-3">\n',
@@ -111,7 +107,7 @@ jobs:
               '              </span>\n',
               '            </label>\n',
           ]
-          location_block[insert_idx:insert_idx] = checkbox
+          location_block[heading_idx + 1:heading_idx + 1] = checkbox
           lines[image_start:image_start] = location_block
 
           path.write_text(''.join(lines))
