@@ -29,6 +29,15 @@ type Region = {
   name: string;
 };
 
+type ProfileLocation = {
+  province: string;
+  province_code: string;
+  city: string;
+  city_code: string;
+  district: string;
+  district_code: string;
+};
+
 const UNITS = [
   "kg",
   "ton",
@@ -72,6 +81,16 @@ export default function ExchangeNewPage() {
   const [selectedProvince, setSelectedProvince] = useState("");
   const [selectedCity, setSelectedCity] = useState("");
   const [selectedDistrict, setSelectedDistrict] = useState("");
+  const [profileLoading, setProfileLoading] = useState(true);
+  const [useProfileLocation, setUseProfileLocation] = useState(true);
+  const [profileLocation, setProfileLocation] = useState<ProfileLocation>({
+    province: "",
+    province_code: "",
+    city: "",
+    city_code: "",
+    district: "",
+    district_code: "",
+  });
 
   const [primaryImageFile, setPrimaryImageFile] = useState<File | null>(null);
   const [primaryImagePreview, setPrimaryImagePreview] = useState<string | null>(null);
@@ -113,6 +132,103 @@ export default function ExchangeNewPage() {
   }, [supabase, router]);
 
   useEffect(() => {
+    if (!userId) return;
+
+    let mounted = true;
+
+    async function loadProfileLocation() {
+      setProfileLoading(true);
+
+      try {
+        const { data: profile, error: profileError } = await supabase
+          .from("profiles")
+          .select("province, province_code, city, city_code, district, district_code")
+          .eq("id", userId)
+          .single();
+
+        if (!mounted) return;
+
+        if (profileError || !profile) {
+          setUseProfileLocation(false);
+          return;
+        }
+
+        const location: ProfileLocation = {
+          province: profile.province || "",
+          province_code: profile.province_code || "",
+          city: profile.city || "",
+          city_code: profile.city_code || "",
+          district: profile.district || "",
+          district_code: profile.district_code || "",
+        };
+
+        setProfileLocation(location);
+
+        const complete = Boolean(
+          location.province_code && location.city_code && location.district_code
+        );
+
+        if (!complete) {
+          setUseProfileLocation(false);
+          return;
+        }
+
+        setSelectedProvince(location.province_code);
+        setSelectedCity(location.city_code);
+        setSelectedDistrict(location.district_code);
+        setUseProfileLocation(true);
+
+        try {
+          const cityResponse = await fetch(
+            `/api/regions/regencies/${encodeURIComponent(location.province_code)}`,
+            { cache: "no-store" }
+          );
+          if (cityResponse.ok) {
+            const cityResult = await cityResponse.json();
+            const cityData = Array.isArray(cityResult)
+              ? cityResult
+              : Array.isArray(cityResult?.data)
+                ? cityResult.data
+                : Array.isArray(cityResult?.regencies)
+                  ? cityResult.regencies
+                  : [];
+            if (mounted) setCities(cityData);
+          }
+
+          const districtResponse = await fetch(
+            `/api/regions/districts/${encodeURIComponent(location.city_code)}`,
+            { cache: "no-store" }
+          );
+          if (districtResponse.ok) {
+            const districtResult = await districtResponse.json();
+            const districtData = Array.isArray(districtResult)
+              ? districtResult
+              : Array.isArray(districtResult?.data)
+                ? districtResult.data
+                : Array.isArray(districtResult?.districts)
+                  ? districtResult.districts
+                  : [];
+            if (mounted) setDistricts(districtData);
+          }
+        } catch (regionErr) {
+          console.error("LOAD PROFILE REGIONS ERROR:", regionErr);
+        }
+      } catch (err) {
+        console.error("LOAD PROFILE LOCATION ERROR:", err);
+        if (mounted) setUseProfileLocation(false);
+      } finally {
+        if (mounted) setProfileLoading(false);
+      }
+    }
+
+    void loadProfileLocation();
+
+    return () => {
+      mounted = false;
+    };
+  }, [userId, supabase]);
+
+  useEffect(() => {
     async function loadProvinces() {
       try {
         const response = await fetch("/api/regions/provinces", {
@@ -139,6 +255,7 @@ export default function ExchangeNewPage() {
   }, []);
 
   async function handleProvinceChange(code: string) {
+    setUseProfileLocation(false);
     setSelectedProvince(code);
     setSelectedCity("");
     setSelectedDistrict("");
@@ -182,6 +299,7 @@ export default function ExchangeNewPage() {
   }
 
   async function handleCityChange(code: string) {
+    setUseProfileLocation(false);
     setSelectedCity(code);
     setSelectedDistrict("");
     setDistricts([]);
@@ -219,6 +337,24 @@ export default function ExchangeNewPage() {
           : "Failed to load districts."
       );
     }
+  }
+
+  function handleProfileLocationToggle(checked: boolean) {
+    setUseProfileLocation(checked);
+    setError(null);
+
+    if (checked) {
+      setSelectedProvince(profileLocation.province_code);
+      setSelectedCity(profileLocation.city_code);
+      setSelectedDistrict(profileLocation.district_code);
+      return;
+    }
+
+    setSelectedProvince("");
+    setSelectedCity("");
+    setSelectedDistrict("");
+    setCities([]);
+    setDistricts([]);
   }
 
   function validateImage(file: File): boolean {
@@ -815,12 +951,26 @@ export default function ExchangeNewPage() {
             </div>
           </div>
 
-          <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-5 space-y-4">
-            <label className="block text-xs font-semibold uppercase tracking-[0.15em] text-white/50">
+          <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-5 sm:p-6">
+            <h2 className="mb-5 text-sm font-semibold uppercase tracking-[0.15em] text-white/70">
               {t.common.location}
-            </label>
+            </h2>
 
-            <div className="grid gap-4 sm:grid-cols-3">
+            <div className="mx-auto max-w-2xl">
+              <label className="mb-5 flex cursor-pointer items-center gap-3">
+                <input
+                  type="checkbox"
+                  checked={useProfileLocation}
+                  onChange={(e) => handleProfileLocationToggle(e.target.checked)}
+                  disabled={profileLoading}
+                  className="h-4 w-4 accent-emerald-300"
+                />
+                <span className="text-sm font-medium text-white">
+                  {locale === "id" ? "Gunakan lokasi sesuai profil saya" : "Use my profile location"}
+                </span>
+              </label>
+
+              <div className="grid gap-4 sm:grid-cols-3">
               <div>
                 <label className="mb-1.5 block text-xs font-medium text-white/60">{t.exchange.provinceLabel}</label>
                 <select
