@@ -1,0 +1,38 @@
+name: Fix Exchange Location JSX
+
+on:
+  push:
+    paths:
+      - .github/workflows/fix-exchange-location-close.yml
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fix location wrapper close
+        shell: python
+        run: |
+          from pathlib import Path
+          path = Path("app/exchange/new/page.tsx")
+          text = path.read_text()
+          location_start = text.find('''          <h2 className="mb-5 text-sm font-semibold uppercase tracking-[0.15em] text-white/70">\n              {t.common.location}\n            </h2>''')
+          if location_start < 0:
+              raise SystemExit("location heading not found")
+          tail = text[location_start:]
+          target = '''              </div>\n            </div>\n          </div>\n\n          {error && ('''
+          replacement = '''              </div>\n            </div>\n              </div>\n          </div>\n\n          {error && ('''
+          if target not in tail:
+              raise SystemExit("location closing sequence not found")
+          tail = tail.replace(target, replacement, 1)
+          path.write_text(text[:location_start] + tail)
+      - name: Commit changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/exchange/new/page.tsx
+          git commit -m "Fix exchange location wrapper"
+          git push
